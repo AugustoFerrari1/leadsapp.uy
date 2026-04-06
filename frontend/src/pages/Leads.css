@@ -357,6 +357,38 @@
   color: var(--red);
 }
 
+.support-template-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.support-template-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.support-template-title {
+  font-size: 12px;
+  color: var(--text2);
+  font-weight: 600;
+}
+
+.support-template-textarea {
+  width: 100%;
+  resize: vertical;
+  line-height: 1.7;
+  font-size: 13px;
+  min-height: 240px;
+}
+
 .msg-box {
   display: flex;
   flex-direction: column;

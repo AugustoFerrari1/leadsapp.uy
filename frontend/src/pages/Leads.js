@@ -11,6 +11,20 @@ const STATUS_LABELS = {
   descartado: { label: 'Descartado', color: 'red' },
 };
 
+const FEATURE_FOLLOWUP_TEXT = `Si te interesa, te cuento rápido algunas cosas que tiene la app:
+
+• Los mails son gratis y los mensajes automáticos de WhatsApp para recordar turnos salen menos de $1 por mensaje.
+• Está integrada con Google Calendar, así que podés manejar los turnos desde ahí o desde la app.
+• Te calcula las finanzas teniendo en cuenta gastos fijos como alquiler, sueldos y otros, sin que tengas que cargar todo cada vez.
+• La landing la podés personalizar vos mismo desde el panel.
+• Si trabajan varios barberos, podés ver todo filtrado por cada uno, incluyendo turnos, finanzas y liquidaciones.
+• También tiene herramientas para retener clientes y hacer que vuelvan si hace tiempo no reservan.
+
+Y algo importante: tus clientes pueden reservar y cancelar solos, sin tener que escribirte para coordinar.
+
+Todo eso por menos del valor un corte al mes
+Ver todas las características: https://turno.uy/#funcionalidades`;
+
 export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +37,7 @@ export default function Leads() {
   const [sendLoading, setSendLoading] = useState(false);
   const [tone, setTone] = useState('amigable');
   const [copied, setCopied] = useState(false);
+  const [templateCopied, setTemplateCopied] = useState(false);
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -103,6 +118,12 @@ export default function Leads() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const copyFeatureTemplate = () => {
+    navigator.clipboard.writeText(FEATURE_FOLLOWUP_TEXT);
+    setTemplateCopied(true);
+    setTimeout(() => setTemplateCopied(false), 2000);
+  };
+
   return (
     <div className="leads-layout">
       {/* LEFT: LIST */}
@@ -178,6 +199,8 @@ export default function Leads() {
             onOpenWpp={() => openWhatsapp(selected.phone, message)}
             onCopy={copyMessage}
             copied={copied}
+            onCopyFeatureTemplate={copyFeatureTemplate}
+            templateCopied={templateCopied}
             onStatusChange={(s) => updateStatus(selected, s)}
             sendLoading={sendLoading}
           />
@@ -214,7 +237,7 @@ function LeadCard({ lead, selected, onClick, onStatusChange }) {
   );
 }
 
-function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGenerate, onSendTemplate, onOpenWpp, onCopy, copied, onStatusChange, sendLoading }) {
+function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGenerate, onSendTemplate, onOpenWpp, onCopy, copied, onCopyFeatureTemplate, templateCopied, onStatusChange, sendLoading }) {
   const st = STATUS_LABELS[lead.status] || STATUS_LABELS.nuevo;
   const toneLabel = tone.charAt(0).toUpperCase() + tone.slice(1);
 
@@ -299,6 +322,20 @@ function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGe
           >
             {genLoading ? <><span className="spin">⟳</span> Generando...</> : message ? 'Ver otro mensaje' : 'Generar para editar'}
           </button>
+        </div>
+        <div className="support-template-box">
+          <div className="support-template-header">
+            <span className="support-template-title">Texto extra para copiar</span>
+            <button className="copy-btn" onClick={onCopyFeatureTemplate}>
+              {templateCopied ? '✓ Copiado!' : '⧉ Copiar texto'}
+            </button>
+          </div>
+          <textarea
+            value={FEATURE_FOLLOWUP_TEXT}
+            readOnly
+            rows={12}
+            className="support-template-textarea"
+          />
         </div>
         {!lead.phone && <p className="warn">⚠ Este lead no tiene teléfono guardado.</p>}
 
