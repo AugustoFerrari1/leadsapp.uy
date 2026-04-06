@@ -31,6 +31,12 @@ barberlead/
 
 ## ⚙ Setup paso a paso
 
+## Requisito de Python
+
+Usá `Python 3.12`.
+
+Este backend hoy no es compatible con `Python 3.14`: dependencias como `greenlet`, `asyncpg` y `pydantic-core` fallan al compilar con esa versión.
+
 ### 1. Crear base de datos en Neon (gratis)
 
 1. Andá a https://neon.tech y creá una cuenta gratis
@@ -58,10 +64,11 @@ cp .env.example .env
 nano .env   # o abrilo con cualquier editor
 
 # Crear entorno virtual Python
-python -m venv venv
+python3.12 -m venv venv
 source venv/bin/activate   # En Windows: venv\Scripts\activate
 
 # Instalar dependencias
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # Instalar navegador para Playwright (solo la primera vez)

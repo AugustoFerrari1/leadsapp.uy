@@ -20,6 +20,7 @@ export default function Leads() {
   const [selected, setSelected] = useState(null);
   const [message, setMessage] = useState('');
   const [genLoading, setGenLoading] = useState(false);
+  const [sendLoading, setSendLoading] = useState(false);
   const [tone, setTone] = useState('amigable');
   const [copied, setCopied] = useState(false);
 
@@ -44,15 +45,23 @@ export default function Leads() {
     return () => clearTimeout(t);
   }, [loadLeads]);
 
-  const generateMessage = async (lead) => {
-    setGenLoading(true);
-    // Remove setMessage('') so it doesn't flicker empty when rotating
+  const requestMessage = async (lead) => {
     try {
       const res = await axios.post(`${API}/message/generate`, {
         lead_id: lead.id,
         tone,
       });
-      setMessage(res.data.message);
+      return res.data.message;
+    } catch (e) {
+      throw e;
+    }
+  };
+
+  const generateMessage = async (lead) => {
+    setGenLoading(true);
+    try {
+      const generatedMessage = await requestMessage(lead);
+      setMessage(generatedMessage);
     } catch (e) {
       setMessage('Error generando el mensaje. Revisá que el backend esté corriendo.');
     } finally {
@@ -71,6 +80,21 @@ export default function Leads() {
     const encoded = encodeURIComponent(msg);
     const num = clean.startsWith('598') ? clean : `598${clean.replace(/^0/, '')}`;
     window.open(`https://wa.me/${num}?text=${encoded}`, '_blank');
+  };
+
+  const sendTemplateMessage = async (lead) => {
+    if (!lead.phone) return;
+
+    setSendLoading(true);
+    try {
+      const generatedMessage = await requestMessage(lead);
+      setMessage(generatedMessage);
+      openWhatsapp(lead.phone, generatedMessage);
+    } catch (e) {
+      setMessage('Error generando el mensaje. Revisá que el backend esté corriendo.');
+    } finally {
+      setSendLoading(false);
+    }
   };
 
   const copyMessage = () => {
@@ -150,10 +174,12 @@ export default function Leads() {
             tone={tone}
             setTone={setTone}
             onGenerate={() => generateMessage(selected)}
+            onSendTemplate={() => sendTemplateMessage(selected)}
             onOpenWpp={() => openWhatsapp(selected.phone, message)}
             onCopy={copyMessage}
             copied={copied}
             onStatusChange={(s) => updateStatus(selected, s)}
+            sendLoading={sendLoading}
           />
         ) : (
           <div className="detail-empty">
@@ -188,8 +214,9 @@ function LeadCard({ lead, selected, onClick, onStatusChange }) {
   );
 }
 
-function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGenerate, onOpenWpp, onCopy, copied, onStatusChange }) {
+function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGenerate, onSendTemplate, onOpenWpp, onCopy, copied, onStatusChange, sendLoading }) {
   const st = STATUS_LABELS[lead.status] || STATUS_LABELS.nuevo;
+  const toneLabel = tone.charAt(0).toUpperCase() + tone.slice(1);
 
   return (
     <div className="detail-content">
@@ -246,7 +273,7 @@ function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGe
       <div className="msg-section">
         <span className="section-label">Generador de mensaje WPP</span>
         <div className="tone-selector">
-          <span>Tono:</span>
+          <span>Template:</span>
           {['amigable', 'directo', 'curioso'].map(t => (
             <button
               key={t}
@@ -257,13 +284,22 @@ function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGe
             </button>
           ))}
         </div>
-        <button
-          className="gen-btn"
-          onClick={onGenerate}
-          disabled={genLoading || !lead.phone}
-        >
-          {genLoading ? <><span className="spin">⟳</span> Generando...</> : message ? '✦ Otro mensaje (rotar)' : '✦ Generar mensaje (Local)'}
-        </button>
+        <div className="generator-actions">
+          <button
+            className="gen-btn"
+            onClick={onSendTemplate}
+            disabled={genLoading || sendLoading || !lead.phone}
+          >
+            {sendLoading ? <><span className="spin">⟳</span> Preparando...</> : `✦ Enviar template ${toneLabel}`}
+          </button>
+          <button
+            className="secondary-btn"
+            onClick={onGenerate}
+            disabled={genLoading || sendLoading}
+          >
+            {genLoading ? <><span className="spin">⟳</span> Generando...</> : message ? 'Ver otro mensaje' : 'Generar para editar'}
+          </button>
+        </div>
         {!lead.phone && <p className="warn">⚠ Este lead no tiene teléfono guardado.</p>}
 
         {message && (
