@@ -186,6 +186,7 @@
 .stat-red .stat-value { color: var(--red); }
 .stat-green .stat-value { color: var(--green); }
 .stat-blue .stat-value { color: var(--blue); }
+.stat-orange .stat-value { color: #fb923c; }
 
 /* TIPS */
 .tips-card {

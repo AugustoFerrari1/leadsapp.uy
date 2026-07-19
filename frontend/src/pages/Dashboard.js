@@ -110,9 +110,9 @@ export default function Dashboard() {
         <div className="stats-grid">
           <StatCard label="Total Leads" value={stats.total} icon="◈" color="accent" />
           <StatCard label="Sin web" value={stats.without_website} icon="✗" color="red" sub="Mejor oportunidad" />
-          <StatCard label="Con web" value={stats.with_website} icon="✓" color="green" sub="Ya digitalizados" />
+          <StatCard label="🔥 Calientes" value={stats.hot_leads} icon="🔥" color="orange" sub="Score ≥ 70" />
+          <StatCard label="Score prom." value={stats.avg_score} icon="⚡" color="accent" sub="De 100 pts" />
           <StatCard label="Contactados" value={stats.contacted} icon="✉" color="blue" />
-          <StatCard label="Nuevos" value={stats.new} icon="★" color="accent" />
         </div>
       )}
 

@@ -1,139 +1,66 @@
 """
-message_generator.py
---------------------
-Generador de mensajes LOCAL — sin Claude API.
-Usa templates hardcodeados con acento rioplatense (uruguayo).
-Cuando quieras reactivar la IA, reemplazá generate_message()
-por la versión comentada al final del archivo.
+Local WhatsApp message generator for Turno.uy outreach.
+
+The best lead offer is a personalized demo: name, services and hours loaded
+before asking the owner to create an account.
 """
 
 import random
 from typing import Dict, Any
 
 DEMO_PAGE = "https://turno.uy/barberia-demo"
-DEMO_DASH = "https://turno.uy/#demo"
+FEATURES_PAGE = "https://turno.uy/#funcionalidades"
 
-TEMPLATES_SIN_WEB: Dict[str, list] = {
+TEMPLATES = {
     "amigable": [
-        "Buenas {name}, ¿cómo va? Soy Augusto Ferrari.\n\nEstoy armando una app para barberías uruguayas. Vi que no tienen web y quería mostrarte algo que armé justo para eso. Podés verlo sin registrarte ni nada desde acá:\n{demo_page} y {demo_dash}",
-
-        "Hola {name}! Soy Augusto.\n\nEstoy arrancando con una app para barberías y vi la tuya en Google Maps. Armé una app que ofrece una landing y un dashboard con reservas, finanzas y todo eso. Podés verla sin registrarte ni nada desde acá:\n{demo_page} y {demo_dash}",
-
-        "Buenas {name}! Me llamo Augusto y soy de Montevideo.\n\nEstoy construyendo una herramienta para barberías de acá. Vi que no tienen web y te quería mostrar la app. Podés probarla sin registrarte ni nada desde acá:\n{demo_page} y {demo_dash}",
-
-        "Hola {name}, ¿todo bien? Soy Augusto.\n\nEstoy arrancando con un SaaS para barberías uruguayas. Vi la tuya en Google Maps y quería mostrarte el sistema y la web. Entrá y miralo tranquilo, no pedimos nada ni cuenta tener que crearte:\n{demo_page} y {demo_dash}",
-
-        "Hola {name}! Soy Augusto.\n\nEstoy empezando con una app para barberías y la tuya me apareció en Google Maps. Tiene landing para clientes, reservas, dashboard con finanzas y liquidaciones. Todo lo podes ver y usar sin registrarte:\n{demo_page} y {demo_dash}",
+        "Buenas {name}, como va? Soy Augusto, de Montevideo.\n\nEstoy trabajando en Turno.uy, una agenda online hecha para barberias uruguayas. Vi {context} y pense que podia servirles para que los clientes reserven solos, reciban recordatorio por WhatsApp y ustedes pierdan menos turnos.\n\nSi te pinta, te armo una demo gratis con el nombre de la barberia, servicios and horarios para que veas como quedaria. Te la paso por aca sin compromiso.",
+        "Hola {name}! Soy Augusto.\n\nEstoy ayudando a barberias de Uruguay a ordenar los turnos sin dejar de usar WhatsApp. La idea es simple: el cliente reserva solo, el sistema recuerda el turno y vos ves agenda, barberos e ingresos en un panel.\n\nVi {context}. Si queres, te preparo una demo personalizada de {name} y te muestro el link de reservas como si ya estuviera funcionando.",
+        "Buenas {name}. Te escribo porque estoy armando Turno.uy para barberias que reciben muchos mensajes por WhatsApp e Instagram.\n\nVi {context}. En vez de mandarte una app generica, puedo dejarte una demo con tus servicios y horarios para que veas si realmente te ahorra tiempo.\n\nTe interesa que te la arme?",
     ],
-
     "directo": [
-        "Buenas {name}. Soy Augusto.\n\nArmé una app para barberías uruguayas. Landing, reservas online, dashboard con finanzas y liquidaciones. Sin web hoy estás perdiendo clientes que buscan en Google. Miralo sin registrarte:\n{demo_page} y {demo_dash}",
-
-        "Buenas {name}. Me llamo Augusto.\n\nTengo una app para barberías ofrece una landing, sistema de reservas y dashboard que te calcula todo solo (finanzas, estadisticas, etc). Podés probarla sin registrarte:\n{demo_page} y {demo_dash}",
-
-        "Hola {name}, soy Augusto.\n\nArmé una herramienta para barberías: web propia, turnos online y un panel que te lleva las cuentas. Todo para ver ahora mismo sin crear cuenta:\n{demo_page} y {demo_dash}",
-
-        "Buenas {name}. Augusto.\n\nEstoy construyendo una app para barberías de Montevideo. Ofrece una Landing, sistema de reservas y dashboard con finanzas. Probala sin registrarte:\n{demo_page} y {demo_dash}",
+        "Buenas {name}. Soy Augusto, creador de Turno.uy.\n\nVi {context}. Si hoy coordinan turnos por WhatsApp, cada mensaje sin responder y cada olvido puede terminar en un hueco de agenda.\n\nTe puedo armar una demo gratis con el nombre de la barberia, servicios y horarios. Si recuperan un turno perdido al mes, el sistema ya se paga.",
+        "Hola {name}, soy Augusto.\n\nTurno.uy es una agenda online para barberias uruguayas: reservas 24/7, recordatorios por WhatsApp, agenda por barbero y dashboard de ingresos.\n\nVi {context}. Te armo una demo personalizada y te muestro como quedaria el link de reservas de la barberia?",
+        "Buenas {name}. Estoy contactando barberias de 2 a 6 barberos que quieren depender menos de WhatsApp para agendar.\n\nVi {context}. Te puedo preparar una demo con sus horarios y servicios para que la evalues en 2 minutos. Sin tarjeta y sin compromiso.",
     ],
-
     "curioso": [
-        "Buenas {name}! Soy Augusto.\n\nEstoy arrancando con una app para barberías. La pregunta que me hice cuando la armé: ¿cuántos clientes buscan barbería en Google y se van porque no encuentran nada? Armé algo para eso, miralo sin registrarte:\n{demo_page} y {demo_dash}",
-
-        "Ey {name}, ¿cómo va? Me llamo Augusto.\n\nEstoy empezando con un SaaS para barberías uruguayas. La idea es simple: que el cliente entre a tu web, saque turno solo, y vos veas todo desde un dashboard. Sin cuenta:\n{demo_page} y {demo_dash}",
-
-        "Hola {name}! Soy Augusto.\n\nVi tu barbería en Maps sin web y me pregunté cuántos clientes te buscan online y no te encuentran. Armé algo para eso. Podés curiosear acá:\n{demo_page} y {demo_dash}",
-
-        "Buenas {name}. Me llamo Augusto.\n\nEstoy arrancando con una app para barberías. Landing para presentarse, turnos online y un dashboard que te hace los cálculos solo. Miralo tranquilo sin registrarte:\n{demo_page} y {demo_dash}",
-
-        "Ey {name}! Augusto.\n\nConstruí una herramienta para barberías de acá - web, reservas y un panel con todo: finanzas, costo fijo, liquidaciones si tenés empleados. Sin crear cuenta:\n{demo_page} y {demo_dash}",
+        "Buenas {name}! Pregunta rapida: cuantos turnos se les pierden al mes por mensajes que quedan colgados o clientes que se olvidan?\n\nSoy Augusto y estoy armando Turno.uy para barberias uruguayas. Vi {context} y creo que una demo personalizada les puede servir para verlo aterrizado a su negocio.\n\nTe la preparo con nombre, servicios y horarios?",
+        "Hola {name}, como va? Si un cliente entra desde Instagram o Google fuera de horario, hoy puede reservar solo o tiene que esperar que alguien responda?\n\nEstoy creando Turno.uy para resolver justo eso en barberias de Uruguay. Vi {context}. Si queres, te armo un link demo de reservas para {name}.",
+        "Buenas {name}. Estoy probando algo con barberias: les armo gratis una demo de agenda online y despues me dicen si les ahorraria mensajes.\n\nVi {context}. La demo incluye reservas, recordatorios por WhatsApp y panel para ver turnos e ingresos.\n\nTe interesa ver como quedaria la tuya?",
     ],
 }
 
-TEMPLATES_CON_WEB: Dict[str, list] = {
-    "amigable": [
-        "Buenas {name}, ¿cómo van? Soy Augusto.\n\nEstoy arrancando con una app para barberías. Vi que ya tienen web. Lo que armé suma arriba de eso: reservas integradas y un dashboard con finanzas, liquidaciones, etc. Miralo tranquilo sin registrarte:\n{demo_page} y {demo_dash}, si te interesa lo integramos gratis",
+FOLLOW_UPS = [
+    "Te dejo el ejemplo general por si queres mirarlo antes: {demo_page}\n\nLa gracia no es solo tener una web: es que el cliente reserve solo, le llegue recordatorio y vos tengas menos idas y vueltas por WhatsApp.",
+    "Dato simple: si recuperan un solo turno perdido por mes, la herramienta ya empieza a justificarse. Por eso la demo la armo con datos reales de la barberia, no con una pantalla generica.",
+    "Tambien sirve si ya tienen web: Turno.uy puede sumar reservas, recordatorios y dashboard sin cambiar toda la presencia digital.",
+]
 
-        "Hola {name}! Me llamo Augusto.\n\nEstoy empezando con un SaaS para barberías uruguayas. Vi la web que tienen. Lo que tengo agrega turnos online y un panel que te lleva las cuentas solo. Sin cuenta ni nada:\n{demo_page} y {demo_dash}, si te interesa lo integramos gratis",
 
-        "Buenas {name}! Soy Augusto.\n\nVi que tienen una web, ya están un paso adelante. Armé un dashboard para barberías con reservas, finanzas y liquidaciones. Si querés probarla sin registrarte:\n{demo_page} y {demo_dash}, si te interesa lo integramos gratis",
-    ],
+def _context_for(lead: Dict[str, Any]) -> str:
+    if lead.get("has_website"):
+        return "que ya tienen presencia online"
+    if lead.get("phone"):
+        return "su ficha en Google Maps y que no aparece una web de reservas"
+    return "su ficha en Google Maps"
 
-    "directo": [
-        "Buenas {name}. Augusto.\n\nArmé una app para barberías. Tienen web, el siguiente paso es reservas online y un dashboard con finanzas y liquidaciones. Sin registrarte:\n{demo_page} y {demo_dash}",
-
-        "Hola {name}. Soy Augusto.\n\nVi la web. Si le agregan turnos online y un panel que les lleve las cuentas, la barbería trabaja más sola. Miralo sin cuenta:\n{demo_page} y {demo_dash}",
-
-        "Buenas {name}. Me llamo Augusto.\n\nEstoy construyendo un SaaS para barberías. Web tienen, queda sumar reservas automáticas y dashboard. Sin crear cuenta:\n{demo_page} y {demo_dash}",
-
-        "Hola {name}. Augusto.\n\nTienen web, buenísimo. Armé algo que agrega reservas, finanzas y liquidaciones arriba de eso. Entrá y fijate:\n{demo_page} y {demo_dash}",
-
-        "Buenas {name}. Soy Augusto.\n\nWeb lista. Lo que falta es que trabaje sola: turnos, finanzas, todo desde un panel. Sin registrarte:\n{demo_page} y {demo_dash}",
-    ],
-
-    "curioso": [],
-}
-
-# ---------------------------------------------------------------------------
-# Función principal (reemplaza a la versión que usaba Claude)
-# ---------------------------------------------------------------------------
 
 async def generate_message(lead: Dict[str, Any], tone: str = "amigable") -> str:
-    """
-    Devuelve un mensaje de WhatsApp listo para enviar manualmente.
-    Selecciona un template local según si el lead tiene web o no, y el tono.
-    
-    ⏸  Claude API en pausa — sin costos, sin latencia.
-    """
-    has_web = lead.get("has_website", False)
-    name = lead.get("name", "che")
-
-    # Agarrar el pool correcto
-    pool = TEMPLATES_CON_WEB if has_web else TEMPLATES_SIN_WEB
-    tone_pool = pool.get(tone) or pool["amigable"]
-
-    # Elegir aleatoriamente para que no sean todos iguales
-    template = random.choice(tone_pool)
-
-    # Nombre limpio para insertar (sin "Barbería" redundante si ya está en el nombre)
-    clean_name = name.strip()
-
-    return template.format(
-        name=clean_name,
+    name = (lead.get("name") or "la barberia").strip()
+    template_pool = TEMPLATES.get(tone) or TEMPLATES["amigable"]
+    message = random.choice(template_pool).format(
+        name=name,
+        context=_context_for(lead),
         demo_page=DEMO_PAGE,
-        demo_dash=DEMO_DASH,
+        features_page=FEATURES_PAGE,
     )
 
+    # Compatible con el campo "score" o "quality_score"
+    score = lead.get("score", lead.get("quality_score", 0))
+    if score >= 75:
+        message += "\n\nPinta buen fit porque parece una barberia activa. Por eso te propongo arrancar directo con la demo personalizada."
 
-# ---------------------------------------------------------------------------
-# VERSIÓN CON IA — descomentar cuando quieras reactivar Claude
-# ---------------------------------------------------------------------------
-#
-# import anthropic
-# import os
-#
-# _client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-#
-# TONE_PROMPTS = {
-#     "amigable": "amigable y cercano, como un conocido que le habla a otro",
-#     "directo":  "directo y al punto, sin rodeos pero sin ser frío",
-#     "curioso":  "haciendo una pregunta que despierte curiosidad, sin revelar todo de entrada",
-# }
-#
-# async def generate_message(lead, tone="amigable"):
-#     has_web = lead.get("has_website", False)
-#     name = lead.get("name", "la barbería")
-#     web_context = (
-#         "La barbería YA tiene sitio web, el ángulo es algo mejor o más específico."
-#         if has_web else
-#         "La barbería NO tiene sitio web, lead muy frío, gestiona todo a mano o por WPP."
-#     )
-#     tone_desc = TONE_PROMPTS.get(tone, TONE_PROMPTS["amigable"])
-#     prompt = f"""Sos un emprendedor uruguayo que creó un SaaS para barberías.
-# Escribí un mensaje WPP para "{name}". Contexto: {web_context}.
-# Tono: {tone_desc}. Rioplatense natural. Máx 5 oraciones. Sin precios. Sin spam.
-# Solo el mensaje, sin comillas."""
-#     msg = _client.messages.create(
-#         model="claude-opus-4-5", max_tokens=300,
-#         messages=[{"role": "user", "content": prompt}]
-#     )
-#     return msg.content[0].text.strip()
+    return message
+
+
+def get_follow_up_template() -> str:
+    return random.choice(FOLLOW_UPS).format(demo_page=DEMO_PAGE)

@@ -28,6 +28,7 @@ async def init_db():
                 website TEXT,
                 has_website BOOLEAN DEFAULT FALSE,
                 rating REAL,
+                score INTEGER DEFAULT 0,
                 source TEXT DEFAULT 'Google Maps',
                 status TEXT DEFAULT 'nuevo',
                 notes TEXT,
@@ -36,6 +37,16 @@ async def init_db():
                 UNIQUE(name, address)
             )
         """)
+
+        # Migración no destructiva: agregar columnas si aún no existen
+        # (para bases de datos creadas antes de esta versión)
+        await conn.execute("""
+            ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0
+        """)
+        await conn.execute("""
+            ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT
+        """)
+
     print("✅ Base de datos inicializada")
 
 
@@ -45,9 +56,15 @@ async def save_lead(lead: Dict[str, Any]) -> bool:
     try:
         async with pool.acquire() as conn:
             await conn.execute("""
-                INSERT INTO leads (name, address, phone, website, has_website, rating, source)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                ON CONFLICT (name, address) DO NOTHING
+                INSERT INTO leads (name, address, phone, website, has_website, rating, score, source)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (name, address) DO UPDATE
+                    SET score = GREATEST(leads.score, EXCLUDED.score),
+                        phone = COALESCE(EXCLUDED.phone, leads.phone),
+                        website = COALESCE(EXCLUDED.website, leads.website),
+                        has_website = EXCLUDED.has_website,
+                        rating = COALESCE(EXCLUDED.rating, leads.rating),
+                        updated_at = NOW()
             """,
                 lead.get("name", ""),
                 lead.get("address"),
@@ -55,6 +72,7 @@ async def save_lead(lead: Dict[str, Any]) -> bool:
                 lead.get("website"),
                 lead.get("has_website", False),
                 lead.get("rating"),
+                lead.get("score", 0),
                 lead.get("source", "Google Maps"),
             )
             return True
@@ -66,7 +84,8 @@ async def save_lead(lead: Dict[str, Any]) -> bool:
 async def get_leads(
     has_web: Optional[bool] = None,
     status: Optional[str] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    sort_by: Optional[str] = "score",
 ) -> List[Dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -89,7 +108,14 @@ async def get_leads(
             params.append(f"%{search}%")
             idx += 1
 
-        query += " ORDER BY created_at DESC"
+        # Ordenamiento
+        allowed_sorts = {
+            "score": "score DESC, created_at DESC",
+            "date": "created_at DESC",
+            "rating": "rating DESC NULLS LAST, score DESC",
+        }
+        order_clause = allowed_sorts.get(sort_by, "score DESC, created_at DESC")
+        query += f" ORDER BY {order_clause}"
 
         rows = await conn.fetch(query, *params)
         return [dict(row) for row in rows]
@@ -104,6 +130,15 @@ async def update_lead_status(lead_id: int, status: str):
         )
 
 
+async def update_lead_notes(lead_id: int, notes: str):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE leads SET notes = $1, updated_at = NOW() WHERE id = $2",
+            notes, lead_id
+        )
+
+
 async def get_stats() -> Dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -112,10 +147,14 @@ async def get_stats() -> Dict:
         without_web = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE has_website = FALSE")
         contactados = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE status = 'contactado'")
         nuevos = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE status = 'nuevo'")
+        avg_score = await conn.fetchval("SELECT ROUND(AVG(score)) FROM leads WHERE score > 0")
+        hot_leads = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE score >= 70 AND status = 'nuevo'")
         return {
             "total": total,
             "with_website": with_web,
             "without_website": without_web,
             "contacted": contactados,
             "new": nuevos,
+            "avg_score": avg_score or 0,
+            "hot_leads": hot_leads,
         }

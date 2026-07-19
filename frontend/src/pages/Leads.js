@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import './Leads.css';
 
@@ -25,12 +25,25 @@ Y algo importante: tus clientes pueden reservar y cancelar solos, sin tener que 
 Todo eso por menos del valor un corte al mes
 Ver todas las características: https://turno.uy/#funcionalidades`;
 
+function getScoreColor(score) {
+  if (score >= 70) return 'score-hot';
+  if (score >= 40) return 'score-warm';
+  return 'score-cold';
+}
+
+function getScoreLabel(score) {
+  if (score >= 70) return '🔥';
+  if (score >= 40) return '⚡';
+  return '❄️';
+}
+
 export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterWeb, setFilterWeb] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('score');
   const [selected, setSelected] = useState(null);
   const [message, setMessage] = useState('');
   const [genLoading, setGenLoading] = useState(false);
@@ -42,7 +55,7 @@ export default function Leads() {
   const loadLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { sort_by: sortBy };
       if (filterWeb !== 'all') params.has_web = filterWeb === 'yes';
       if (filterStatus !== 'all') params.status = filterStatus;
       if (search) params.search = search;
@@ -53,7 +66,7 @@ export default function Leads() {
     } finally {
       setLoading(false);
     }
-  }, [filterWeb, filterStatus, search]);
+  }, [filterWeb, filterStatus, search, sortBy]);
 
   useEffect(() => {
     const t = setTimeout(loadLeads, 300);
@@ -61,15 +74,11 @@ export default function Leads() {
   }, [loadLeads]);
 
   const requestMessage = async (lead) => {
-    try {
-      const res = await axios.post(`${API}/message/generate`, {
-        lead_id: lead.id,
-        tone,
-      });
-      return res.data.message;
-    } catch (e) {
-      throw e;
-    }
+    const res = await axios.post(`${API}/message/generate`, {
+      lead_id: lead.id,
+      tone,
+    });
+    return res.data.message;
   };
 
   const generateMessage = async (lead) => {
@@ -90,6 +99,12 @@ export default function Leads() {
     if (selected?.id === lead.id) setSelected({ ...selected, status });
   };
 
+  const updateNotes = async (lead, notes) => {
+    await axios.patch(`${API}/leads/${lead.id}/notes`, { notes });
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, notes } : l));
+    if (selected?.id === lead.id) setSelected({ ...selected, notes });
+  };
+
   const openWhatsapp = (phone, msg) => {
     const clean = phone?.replace(/\D/g, '') || '';
     const encoded = encodeURIComponent(msg);
@@ -99,7 +114,6 @@ export default function Leads() {
 
   const sendTemplateMessage = async (lead) => {
     if (!lead.phone) return;
-
     setSendLoading(true);
     try {
       const generatedMessage = await requestMessage(lead);
@@ -124,6 +138,8 @@ export default function Leads() {
     setTimeout(() => setTemplateCopied(false), 2000);
   };
 
+  const hotCount = leads.filter(l => l.score >= 70 && l.status === 'nuevo').length;
+
   return (
     <div className="leads-layout">
       {/* LEFT: LIST */}
@@ -131,7 +147,12 @@ export default function Leads() {
         <div className="leads-header">
           <div>
             <h1 className="page-title">Leads</h1>
-            <span className="leads-count">{leads.length} resultados</span>
+            <div className="leads-count-row">
+              <span className="leads-count">{leads.length} resultados</span>
+              {hotCount > 0 && (
+                <span className="hot-badge">🔥 {hotCount} calientes</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -157,6 +178,22 @@ export default function Leads() {
               <option value="interesado">Interesados</option>
               <option value="descartado">Descartados</option>
             </select>
+          </div>
+          <div className="sort-row">
+            <span className="sort-label">Ordenar:</span>
+            {[
+              { key: 'score', label: '⚡ Score' },
+              { key: 'date', label: '🕐 Fecha' },
+              { key: 'rating', label: '★ Rating' },
+            ].map(s => (
+              <button
+                key={s.key}
+                className={`sort-btn ${sortBy === s.key ? 'active' : ''}`}
+                onClick={() => setSortBy(s.key)}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -202,6 +239,7 @@ export default function Leads() {
             onCopyFeatureTemplate={copyFeatureTemplate}
             templateCopied={templateCopied}
             onStatusChange={(s) => updateStatus(selected, s)}
+            onNotesChange={(notes) => updateNotes(selected, notes)}
             sendLoading={sendLoading}
           />
         ) : (
@@ -217,11 +255,17 @@ export default function Leads() {
 
 function LeadCard({ lead, selected, onClick, onStatusChange }) {
   const st = STATUS_LABELS[lead.status] || STATUS_LABELS.nuevo;
+  const score = lead.score ?? 0;
   return (
     <div className={`lead-card ${selected ? 'selected' : ''}`} onClick={onClick}>
       <div className="lead-card-top">
         <span className="lead-name">{lead.name}</span>
-        <span className={`badge badge-${st.color}`}>{st.label}</span>
+        <div className="lead-card-badges">
+          <span className={`score-badge ${getScoreColor(score)}`}>
+            {getScoreLabel(score)} {score}
+          </span>
+          <span className={`badge badge-${st.color}`}>{st.label}</span>
+        </div>
       </div>
       <div className="lead-card-meta">
         {lead.address && <span>📍 {lead.address}</span>}
@@ -237,9 +281,36 @@ function LeadCard({ lead, selected, onClick, onStatusChange }) {
   );
 }
 
-function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGenerate, onSendTemplate, onOpenWpp, onCopy, copied, onCopyFeatureTemplate, templateCopied, onStatusChange, sendLoading }) {
+function LeadDetail({
+  lead, message, setMessage, genLoading, tone, setTone,
+  onGenerate, onSendTemplate, onOpenWpp, onCopy, copied,
+  onCopyFeatureTemplate, templateCopied, onStatusChange,
+  onNotesChange, sendLoading
+}) {
   const st = STATUS_LABELS[lead.status] || STATUS_LABELS.nuevo;
   const toneLabel = tone.charAt(0).toUpperCase() + tone.slice(1);
+  const score = lead.score ?? 0;
+
+  const [notes, setNotes] = useState(lead.notes || '');
+  const [notesSaved, setNotesSaved] = useState(false);
+  const notesTimer = useRef(null);
+
+  // Sync notes when lead changes
+  useEffect(() => {
+    setNotes(lead.notes || '');
+    setNotesSaved(false);
+  }, [lead.id]);
+
+  const handleNotesChange = (val) => {
+    setNotes(val);
+    setNotesSaved(false);
+    clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => {
+      onNotesChange(val);
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    }, 800);
+  };
 
   return (
     <div className="detail-content">
@@ -248,7 +319,12 @@ function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGe
           <h2 className="detail-name">{lead.name}</h2>
           {lead.address && <p className="detail-addr">📍 {lead.address}</p>}
         </div>
-        <span className={`badge badge-${st.color}`}>{st.label}</span>
+        <div className="detail-top-right">
+          <span className={`score-badge score-badge-lg ${getScoreColor(score)}`}>
+            {getScoreLabel(score)} Score: {score}
+          </span>
+          <span className={`badge badge-${st.color}`}>{st.label}</span>
+        </div>
       </div>
 
       <div className="detail-info">
@@ -290,6 +366,21 @@ function LeadDetail({ lead, message, setMessage, genLoading, tone, setTone, onGe
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Notas rápidas */}
+      <div className="notes-section">
+        <div className="notes-header">
+          <span className="section-label">Notas</span>
+          {notesSaved && <span className="notes-saved">✓ Guardado</span>}
+        </div>
+        <textarea
+          className="notes-textarea"
+          placeholder="Escribí notas sobre este lead: cómo fue la charla, qué le interesó, cuándo volver a contactar..."
+          value={notes}
+          onChange={e => handleNotesChange(e.target.value)}
+          rows={3}
+        />
       </div>
 
       {/* Message generator */}

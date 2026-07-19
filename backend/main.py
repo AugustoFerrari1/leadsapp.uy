@@ -6,7 +6,10 @@ from typing import Optional
 import asyncio
 import json
 from scraper import scrape_barberias
-from database import init_db, get_leads, save_lead, update_lead_status, get_stats
+from database import (
+    init_db, get_leads, save_lead,
+    update_lead_status, update_lead_notes, get_stats
+)
 from message_generator import generate_message
 
 app = FastAPI(title="BarberLead API")
@@ -37,8 +40,13 @@ async def stats():
 
 
 @app.get("/leads")
-async def leads(has_web: Optional[bool] = None, status: Optional[str] = None, search: Optional[str] = None):
-    return await get_leads(has_web=has_web, status=status, search=search)
+async def leads(
+    has_web: Optional[bool] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_by: Optional[str] = "score",
+):
+    return await get_leads(has_web=has_web, status=status, search=search, sort_by=sort_by)
 
 
 @app.post("/scrape/start")
@@ -93,26 +101,59 @@ async def update_status(lead_id: int, update: StatusUpdate):
     return {"ok": True}
 
 
+class NotesUpdate(BaseModel):
+    notes: str
+
+
+@app.patch("/leads/{lead_id}/notes")
+async def update_notes(lead_id: int, update: NotesUpdate):
+    await update_lead_notes(lead_id, update.notes)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Zonas de búsqueda — Montevideo (barrios) + Interior Uruguay
+# ---------------------------------------------------------------------------
+ZONAS = [
+    # Montevideo — barrios principales
+    "barberias Pocitos Montevideo Uruguay",
+    "barberias Punta Carretas Montevideo Uruguay",
+    "barberias Carrasco Montevideo Uruguay",
+    "barberias Malvin Montevideo Uruguay",
+    "barberias Centro Montevideo Uruguay",
+    "barberias Ciudad Vieja Montevideo Uruguay",
+    "barberias Buceo Montevideo Uruguay",
+    "barberias Tres Cruces Montevideo Uruguay",
+    "barberias Parque Batlle Montevideo Uruguay",
+    "barberias Cordón Montevideo Uruguay",
+    "barberias Palermo Montevideo Uruguay",
+    "barberias Aguada Montevideo Uruguay",
+    "barberias Prado Montevideo Uruguay",
+    "barberias La Blanqueada Montevideo Uruguay",
+    "barberias Reducto Montevideo Uruguay",
+    # Montevideo — queries alternativas
+    "peluquería hombre Pocitos Montevideo",
+    "peluquería masculina Centro Montevideo",
+    "salón barbería Carrasco Montevideo",
+    # Interior Uruguay — ciudades principales
+    "barberias Maldonado Uruguay",
+    "barberias Punta del Este Uruguay",
+    "barberias Paysandú Uruguay",
+    "barberias Salto Uruguay",
+    "barberias Rivera Uruguay",
+    "barberias Canelones Uruguay",
+    "barberias Las Piedras Uruguay",
+]
+
+
 async def run_scraping():
     global scraping_status
     try:
-        zonas = [
-            "barberias Montevideo Uruguay",
-            "barberias Punta Carretas Montevideo",
-            "barberias Pocitos Montevideo",
-            "barberias Malvin Montevideo",
-            "barberias Centro Montevideo",
-            "barberias Carrasco Montevideo",
-            "barberias Buceo Montevideo",
-            "barberias Ciudad Vieja Montevideo",
-            "barberias Tres Cruces Montevideo",
-            "barberias Parque Batlle Montevideo",
-        ]
-        scraping_status["total"] = len(zonas)
+        scraping_status["total"] = len(ZONAS)
         scraping_status["message"] = "Buscando barberías en Google Maps..."
 
         all_leads = []
-        for i, zona in enumerate(zonas):
+        for i, zona in enumerate(ZONAS):
             scraping_status["progress"] = i + 1
             scraping_status["message"] = f"Scrapeando: {zona}..."
             leads = await scrape_barberias(zona)
@@ -126,7 +167,7 @@ async def run_scraping():
                 saved += 1
 
         scraping_status["running"] = False
-        scraping_status["message"] = f"✅ Completado. {saved} nuevos leads guardados."
+        scraping_status["message"] = f"✅ Completado. {saved} leads procesados de {len(ZONAS)} zonas."
     except Exception as e:
         scraping_status["running"] = False
         scraping_status["message"] = f"❌ Error: {str(e)}"
