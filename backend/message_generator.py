@@ -13,7 +13,7 @@ FEATURES_PAGE = "https://turno.uy/#funcionalidades"
 
 TEMPLATES = {
     "amigable": [
-        "Buenas {name}, como va? Soy Augusto, de Montevideo.\n\nEstoy trabajando en Turno.uy, una agenda online hecha para barberias uruguayas. Vi {context} y pense que podia servirles para que los clientes reserven solos, reciban recordatorio por WhatsApp y ustedes pierdan menos turnos.\n\nSi te pinta, te armo una demo gratis con el nombre de la barberia, servicios and horarios para que veas como quedaria. Te la paso por aca sin compromiso.",
+        "Buenas, como va? Soy Augusto, de Montevideo.\n\nEstoy trabajando en Turno.uy, una agenda online hecha para barberias uruguayas. Vi {context} y pense que podia servirles para que los clientes reserven solos, reciban recordatorio por WhatsApp y ustedes pierdan menos turnos.\n\nSi te pinta, te armo una demo gratis con el nombre de la barberia, servicios and horarios para que veas como quedaria. Te la paso por aca sin compromiso.",
     ],
 }
 
@@ -45,7 +45,7 @@ async def generate_message(lead: Dict[str, Any], tone: str = "amigable") -> str:
     # Compatible con el campo "score" o "quality_score"
     score = lead.get("score", lead.get("quality_score", 0))
     if score >= 75:
-        message += "\n\nPinta buen fit porque parece una barberia activa. Por eso te propongo arrancar directo con la demo personalizada."
+        message += "\n\nAca podes ver todo lo que tiene: https://turno.uy/#funcionalidades"
 
     return message
 
