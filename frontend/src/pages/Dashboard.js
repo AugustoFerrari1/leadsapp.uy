@@ -11,12 +11,16 @@ export default function Dashboard() {
   const [scrapeProgress, setScrapeProgress] = useState(0);
   const [scrapeTotal, setScrapeTotal] = useState(0);
   const [lastRun, setLastRun] = useState(null);
+  const [resetting, setResetting] = useState(false);
   const eventSourceRef = useRef(null);
 
   useEffect(() => {
     loadStats();
     const saved = localStorage.getItem('lastRun');
     if (saved) setLastRun(saved);
+    return () => {
+      if (eventSourceRef.current) eventSourceRef.current.close();
+    };
   }, []);
 
   const loadStats = async () => {
@@ -34,7 +38,6 @@ export default function Dashboard() {
       setScraping(true);
       setScrapeMsg('Iniciando búsqueda...');
 
-      // Poll status every 2s
       const interval = setInterval(async () => {
         try {
           const res = await axios.get(`${API}/scrape/status`);
@@ -55,11 +58,29 @@ export default function Dashboard() {
           setScraping(false);
         }
       }, 2000);
-
     } catch (e) {
       if (e.response?.data?.detail) {
         setScrapeMsg('⚠️ ' + e.response.data.detail);
       }
+    }
+  };
+
+  const resetDatabase = async () => {
+    const confirmed = window.confirm('Esto borra todos los leads guardados y reinicia la base. ¿Querés seguir?');
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      await axios.post(`${API}/leads/reset`);
+      setStats(null);
+      setLastRun(null);
+      localStorage.removeItem('lastRun');
+      await loadStats();
+      setScrapeMsg('Base reiniciada. Ya podés arrancar desde cero.');
+    } catch (e) {
+      setScrapeMsg('No se pudo resetear la base.');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -75,7 +96,6 @@ export default function Dashboard() {
         {lastRun && <span className="last-run">Último scraping: {lastRun}</span>}
       </div>
 
-      {/* SCRAPE BUTTON */}
       <div className="scrape-card">
         <div className="scrape-card-left">
           <h2>🗺 Buscar barberías</h2>
@@ -92,35 +112,43 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        <button
-          className={`scrape-btn ${scraping ? 'scraping' : ''}`}
-          onClick={startScraping}
-          disabled={scraping}
-        >
-          {scraping ? (
-            <><span className="spin">⟳</span> Scrapeando...</>
-          ) : (
-            <><span>▶</span> Iniciar Scraping</>
-          )}
-        </button>
+        <div className="scrape-actions">
+          <button
+            className={`scrape-btn ${scraping ? 'scraping' : ''}`}
+            onClick={startScraping}
+            disabled={scraping}
+          >
+            {scraping ? (
+              <><span className="spin">⟳</span> Scrapeando...</>
+            ) : (
+              <><span>▶</span> Iniciar Scraping</>
+            )}
+          </button>
+          <button
+            className="reset-btn"
+            onClick={resetDatabase}
+            disabled={resetting || scraping}
+          >
+            {resetting ? 'Reseteando...' : 'Resetear base'}
+          </button>
+        </div>
       </div>
 
-      {/* STATS */}
       {stats && (
         <div className="stats-grid">
           <StatCard label="Total Leads" value={stats.total} icon="◈" color="accent" />
           <StatCard label="Sin web" value={stats.without_website} icon="✗" color="red" sub="Mejor oportunidad" />
           <StatCard label="🔥 Calientes" value={stats.hot_leads} icon="🔥" color="orange" sub="Score ≥ 70" />
+          <StatCard label="Seguimiento" value={stats.followup_pending} icon="⏱" color="blue" sub="72h sin respuesta" />
           <StatCard label="Score prom." value={stats.avg_score} icon="⚡" color="accent" sub="De 100 pts" />
           <StatCard label="Contactados" value={stats.contacted} icon="✉" color="blue" />
         </div>
       )}
 
-      {/* TIPS */}
       <div className="tips-card">
         <h3>💡 Cómo usar esto</h3>
         <ol>
-          <li>Hacé click en <strong>Iniciar Scraping</strong> — se buscan barberías en 10 zonas de Montevideo automáticamente.</li>
+          <li>Hacé click en <strong>Iniciar Scraping</strong> — se buscan barberías en múltiples zonas de Montevideo automáticamente.</li>
           <li>Andá a <strong>Leads</strong> para ver y filtrar los resultados.</li>
           <li>Filtrá por <em>"sin web"</em> para encontrar los prospectos más calientes.</li>
           <li>Seleccioná un lead, generá el mensaje y abrí WhatsApp con un click.</li>

@@ -15,6 +15,10 @@
 
 .leads-header {
   margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .page-title {
@@ -45,6 +49,25 @@
   padding: 2px 8px;
   border-radius: 20px;
   animation: hotpulse 2s ease-in-out infinite;
+}
+
+.followup-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(96, 165, 250, 0.14);
+  color: var(--blue);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.lead-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 @keyframes hotpulse {
@@ -592,6 +615,25 @@
 .spin {
   display: inline-block;
   animation: spin 1s linear infinite;
+}
+
+@media (max-width: 1100px) {
+  .leads-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .leads-panel {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+  }
+
+  .detail-panel {
+    padding-left: 0;
+  }
 }
 
 @keyframes spin {

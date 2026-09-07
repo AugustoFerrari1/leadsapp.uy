@@ -1,25 +1,24 @@
 """
 Local WhatsApp message generator for Turno.uy outreach.
 
-The best lead offer is a personalized demo: name, services and hours loaded
-before asking the owner to create an account.
+The best lead offer is a short, direct message that invites the owner to
+reply or ask for a demo later, without promising any paid integration.
 """
 
 import random
 from typing import Dict, Any
 
-DEMO_PAGE = "https://turno.uy/barberia-demo"
 FEATURES_PAGE = "https://turno.uy/#funcionalidades"
 
 TEMPLATES = {
     "amigable": [
-        "Buenas, como va? Soy Augusto, de Montevideo.\n\nEstoy trabajando en Turno.uy, una agenda online hecha para barberias uruguayas. Vi {context} y pense que podia servirles para que los clientes reserven solos, reciban recordatorio por WhatsApp y ustedes pierdan menos turnos.\n\nSi te pinta, te armo una demo gratis con el nombre de la barberia, servicios and horarios para que veas como quedaria. Te la paso por aca sin compromiso.",
+        "Buenas, como va? Soy Augusto, de Montevideo.\n\nEstoy trabajando en Turno.uy, una agenda online hecha para barberias uruguayas. Vi {context} y pense que podia servirles para que los clientes reserven solos, reciban recordatorio por WhatsApp y ustedes pierdan menos turnos.\n\nSi te pinta, te muestro un ejemplo y te cuento rapido como quedaria aplicado a tu barberia. Sin compromiso.",
     ],
 }
 
 FOLLOW_UPS = [
-    "Te dejo el ejemplo general por si queres mirarlo antes: {demo_page}\n\nLa gracia no es solo tener una web: es que el cliente reserve solo, le llegue recordatorio y vos tengas menos idas y vueltas por WhatsApp.",
-    "Dato simple: si recuperan un solo turno perdido por mes, la herramienta ya empieza a justificarse. Por eso la demo la armo con datos reales de la barberia, no con una pantalla generica.",
+    "Te dejo la info general por si queres mirarla: {features_page}\n\nLa gracia no es solo tener una web: es que el cliente reserve solo, le llegue recordatorio y vos tengas menos idas y vueltas por WhatsApp.",
+    "Dato simple: si recuperan un solo turno perdido por mes, la herramienta ya empieza a justificarse. Por eso suelo mostrar un ejemplo bien aterrizado a cada caso.",
     "Tambien sirve si ya tienen web: Turno.uy puede sumar reservas, recordatorios y dashboard sin cambiar toda la presencia digital.",
 ]
 
@@ -38,7 +37,6 @@ async def generate_message(lead: Dict[str, Any], tone: str = "amigable") -> str:
     message = random.choice(template_pool).format(
         name=name,
         context=_context_for(lead),
-        demo_page=DEMO_PAGE,
         features_page=FEATURES_PAGE,
     )
 
@@ -51,4 +49,4 @@ async def generate_message(lead: Dict[str, Any], tone: str = "amigable") -> str:
 
 
 def get_follow_up_template() -> str:
-    return random.choice(FOLLOW_UPS).format(demo_page=DEMO_PAGE)
+    return random.choice(FOLLOW_UPS).format(features_page=FEATURES_PAGE)

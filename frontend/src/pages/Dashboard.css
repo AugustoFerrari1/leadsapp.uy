@@ -42,6 +42,14 @@
   margin-bottom: 28px;
 }
 
+.scrape-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .scrape-card-left h2 {
   font-family: var(--font-head);
   font-size: 18px;
@@ -128,6 +136,29 @@
   border: 1px solid var(--border2);
 }
 
+.reset-btn {
+  background: transparent;
+  color: var(--red);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.reset-btn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.08);
+  border-color: var(--red);
+}
+
+.reset-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .spin {
   display: inline-block;
   animation: spin 1s linear infinite;
@@ -141,7 +172,7 @@
 /* STATS */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 28px;
 }
@@ -187,6 +218,22 @@
 .stat-green .stat-value { color: var(--green); }
 .stat-blue .stat-value { color: var(--blue); }
 .stat-orange .stat-value { color: #fb923c; }
+
+@media (max-width: 1100px) {
+  .scrape-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .scrape-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 
 /* TIPS */
 .tips-card {

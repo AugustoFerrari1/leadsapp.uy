@@ -8,7 +8,7 @@ import json
 from scraper import scrape_barberias
 from database import (
     init_db, get_leads, save_lead,
-    update_lead_status, update_lead_notes, get_stats
+    update_lead_status, update_lead_notes, get_stats, reset_leads
 )
 from message_generator import generate_message
 
@@ -108,6 +108,12 @@ class NotesUpdate(BaseModel):
 @app.patch("/leads/{lead_id}/notes")
 async def update_notes(lead_id: int, update: NotesUpdate):
     await update_lead_notes(lead_id, update.notes)
+    return {"ok": True}
+
+
+@app.post("/leads/reset")
+async def reset_all_leads():
+    await reset_leads()
     return {"ok": True}
 
 

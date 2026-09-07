@@ -1,7 +1,14 @@
-import asyncpg
+try:
+    import asyncpg
+except ModuleNotFoundError:  # pragma: no cover - allows local tests without deps
+    asyncpg = None
 import os
 from typing import Optional, List, Dict, Any
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover - allows local tests without deps
+    def load_dotenv():
+        return None
 
 load_dotenv()
 
@@ -12,6 +19,8 @@ _pool = None
 async def get_pool():
     global _pool
     if _pool is None:
+        if asyncpg is None:
+            raise RuntimeError("asyncpg is required to connect to the database")
         _pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
     return _pool
 
@@ -31,6 +40,7 @@ async def init_db():
                 score INTEGER DEFAULT 0,
                 source TEXT DEFAULT 'Google Maps',
                 status TEXT DEFAULT 'nuevo',
+                contacted_at TIMESTAMPTZ,
                 notes TEXT,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -44,10 +54,13 @@ async def init_db():
             ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0
         """)
         await conn.execute("""
+            ALTER TABLE leads ADD COLUMN IF NOT EXISTS contacted_at TIMESTAMPTZ
+        """)
+        await conn.execute("""
             ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes TEXT
         """)
 
-    print("✅ Base de datos inicializada")
+    print("Base de datos inicializada")
 
 
 async def save_lead(lead: Dict[str, Any]) -> bool:
@@ -124,10 +137,16 @@ async def get_leads(
 async def update_lead_status(lead_id: int, status: str):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE leads SET status = $1, updated_at = NOW() WHERE id = $2",
-            status, lead_id
-        )
+        if status == "contactado":
+            await conn.execute(
+                "UPDATE leads SET status = $1, contacted_at = NOW(), updated_at = NOW() WHERE id = $2",
+                status, lead_id
+            )
+        else:
+            await conn.execute(
+                "UPDATE leads SET status = $1, updated_at = NOW() WHERE id = $2",
+                status, lead_id
+            )
 
 
 async def update_lead_notes(lead_id: int, notes: str):
@@ -137,6 +156,12 @@ async def update_lead_notes(lead_id: int, notes: str):
             "UPDATE leads SET notes = $1, updated_at = NOW() WHERE id = $2",
             notes, lead_id
         )
+
+
+async def reset_leads():
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("TRUNCATE TABLE leads RESTART IDENTITY")
 
 
 async def get_stats() -> Dict:
@@ -149,6 +174,13 @@ async def get_stats() -> Dict:
         nuevos = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE status = 'nuevo'")
         avg_score = await conn.fetchval("SELECT ROUND(AVG(score)) FROM leads WHERE score > 0")
         hot_leads = await conn.fetchval("SELECT COUNT(*) FROM leads WHERE score >= 70 AND status = 'nuevo'")
+        followup_pending = await conn.fetchval("""
+            SELECT COUNT(*)
+            FROM leads
+            WHERE status = 'contactado'
+              AND contacted_at IS NOT NULL
+              AND contacted_at <= NOW() - INTERVAL '72 hours'
+        """)
         return {
             "total": total,
             "with_website": with_web,
@@ -157,4 +189,5 @@ async def get_stats() -> Dict:
             "new": nuevos,
             "avg_score": avg_score or 0,
             "hot_leads": hot_leads,
+            "followup_pending": followup_pending or 0,
         }

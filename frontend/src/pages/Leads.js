@@ -37,6 +37,13 @@ function getScoreLabel(score) {
   return '❄️';
 }
 
+function isFollowupPending(lead) {
+  if (lead.status !== 'contactado' || !lead.contacted_at) return false;
+  const contactedAt = new Date(lead.contacted_at).getTime();
+  if (Number.isNaN(contactedAt)) return false;
+  return Date.now() - contactedAt >= 72 * 60 * 60 * 1000;
+}
+
 export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +68,10 @@ export default function Leads() {
       if (search) params.search = search;
       const res = await axios.get(`${API}/leads`, { params });
       setLeads(res.data);
+      setSelected(prev => {
+        if (!prev) return prev;
+        return res.data.find(item => item.id === prev.id) || prev;
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -81,6 +92,21 @@ export default function Leads() {
     return res.data.message;
   };
 
+  const updateLeadLocally = (leadId, updater) => {
+    setLeads(prev => prev.map(l => (l.id === leadId ? updater(l) : l)));
+    setSelected(prev => (prev && prev.id === leadId ? updater(prev) : prev));
+  };
+
+  const markLeadContacted = (lead) => {
+    const contactedAt = new Date().toISOString();
+    updateLeadLocally(lead.id, current => ({
+      ...current,
+      status: 'contactado',
+      contacted_at: current.contacted_at || contactedAt,
+    }));
+    axios.patch(`${API}/leads/${lead.id}/status`, { status: 'contactado' }).catch(console.error);
+  };
+
   const generateMessage = async (lead) => {
     setGenLoading(true);
     try {
@@ -94,21 +120,28 @@ export default function Leads() {
   };
 
   const updateStatus = async (lead, status) => {
+    const contactedAt = status === 'contactado'
+      ? (lead.contacted_at || new Date().toISOString())
+      : lead.contacted_at;
+    updateLeadLocally(lead.id, current => ({
+      ...current,
+      status,
+      contacted_at: contactedAt,
+    }));
     await axios.patch(`${API}/leads/${lead.id}/status`, { status });
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status } : l));
-    if (selected?.id === lead.id) setSelected({ ...selected, status });
   };
 
   const updateNotes = async (lead, notes) => {
     await axios.patch(`${API}/leads/${lead.id}/notes`, { notes });
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, notes } : l));
-    if (selected?.id === lead.id) setSelected({ ...selected, notes });
+    updateLeadLocally(lead.id, current => ({ ...current, notes }));
   };
 
-  const openWhatsapp = (phone, msg) => {
-    const clean = phone?.replace(/\D/g, '') || '';
+  const openWhatsapp = (lead, msg) => {
+    if (!lead.phone) return;
+    const clean = lead.phone.replace(/\D/g, '');
     const encoded = encodeURIComponent(msg);
     const num = clean.startsWith('598') ? clean : `598${clean.replace(/^0/, '')}`;
+    markLeadContacted(lead);
     window.open(`https://wa.me/${num}?text=${encoded}`, '_blank');
   };
 
@@ -118,7 +151,7 @@ export default function Leads() {
     try {
       const generatedMessage = await requestMessage(lead);
       setMessage(generatedMessage);
-      openWhatsapp(lead.phone, generatedMessage);
+      openWhatsapp(lead, generatedMessage);
     } catch (e) {
       setMessage('Error generando el mensaje. Revisá que el backend esté corriendo.');
     } finally {
@@ -139,24 +172,36 @@ export default function Leads() {
   };
 
   const hotCount = leads.filter(l => l.score >= 70 && l.status === 'nuevo').length;
+  const followupPendingCount = leads.filter(isFollowupPending).length;
+  const nextHotLead = leads.find(l => l.score >= 70 && l.status === 'nuevo');
+
+  const jumpToNextHotLead = () => {
+    if (!nextHotLead) return;
+    setSelected(nextHotLead);
+    setMessage('');
+  };
 
   return (
     <div className="leads-layout">
-      {/* LEFT: LIST */}
       <div className="leads-panel">
         <div className="leads-header">
           <div>
             <h1 className="page-title">Leads</h1>
             <div className="leads-count-row">
               <span className="leads-count">{leads.length} resultados</span>
-              {hotCount > 0 && (
-                <span className="hot-badge">🔥 {hotCount} calientes</span>
+              {hotCount > 0 && <span className="hot-badge">🔥 {hotCount} calientes</span>}
+              {followupPendingCount > 0 && (
+                <span className="followup-badge">Seguimiento {followupPendingCount}</span>
               )}
             </div>
           </div>
+          <div className="lead-actions">
+            <button className="secondary-btn" onClick={jumpToNextHotLead} disabled={!nextHotLead}>
+              Siguiente lead
+            </button>
+          </div>
         </div>
 
-        {/* FILTERS */}
         <div className="filters">
           <input
             type="text"
@@ -197,7 +242,6 @@ export default function Leads() {
           </div>
         </div>
 
-        {/* LIST */}
         <div className="leads-list">
           {loading ? (
             <div className="empty-state">Cargando leads...</div>
@@ -221,7 +265,6 @@ export default function Leads() {
         </div>
       </div>
 
-      {/* RIGHT: DETAIL */}
       <div className="detail-panel">
         {selected ? (
           <LeadDetail
@@ -233,7 +276,7 @@ export default function Leads() {
             setTone={setTone}
             onGenerate={() => generateMessage(selected)}
             onSendTemplate={() => sendTemplateMessage(selected)}
-            onOpenWpp={() => openWhatsapp(selected.phone, message)}
+            onOpenWpp={() => openWhatsapp(selected, message)}
             onCopy={copyMessage}
             copied={copied}
             onCopyFeatureTemplate={copyFeatureTemplate}
@@ -256,6 +299,7 @@ export default function Leads() {
 function LeadCard({ lead, selected, onClick, onStatusChange }) {
   const st = STATUS_LABELS[lead.status] || STATUS_LABELS.nuevo;
   const score = lead.score ?? 0;
+  const followup = isFollowupPending(lead);
   return (
     <div className={`lead-card ${selected ? 'selected' : ''}`} onClick={onClick}>
       <div className="lead-card-top">
@@ -265,6 +309,7 @@ function LeadCard({ lead, selected, onClick, onStatusChange }) {
             {getScoreLabel(score)} {score}
           </span>
           <span className={`badge badge-${st.color}`}>{st.label}</span>
+          {followup && <span className="followup-badge">Seguimiento</span>}
         </div>
       </div>
       <div className="lead-card-meta">
@@ -295,7 +340,6 @@ function LeadDetail({
   const [notesSaved, setNotesSaved] = useState(false);
   const notesTimer = useRef(null);
 
-  // Sync notes when lead changes
   useEffect(() => {
     setNotes(lead.notes || '');
     setNotesSaved(false);
@@ -346,13 +390,18 @@ function LeadDetail({
             <span>★ {lead.rating}</span>
           </div>
         )}
+        {lead.contacted_at && (
+          <div className="info-row">
+            <span className="info-label">Contactado</span>
+            <span>{new Date(lead.contacted_at).toLocaleString('es-UY')}</span>
+          </div>
+        )}
         <div className="info-row">
           <span className="info-label">Fuente</span>
           <span>{lead.source}</span>
         </div>
       </div>
 
-      {/* Status changer */}
       <div className="status-section">
         <span className="section-label">Cambiar estado</span>
         <div className="status-buttons">
@@ -368,7 +417,6 @@ function LeadDetail({
         </div>
       </div>
 
-      {/* Notas rápidas */}
       <div className="notes-section">
         <div className="notes-header">
           <span className="section-label">Notas</span>
@@ -383,7 +431,6 @@ function LeadDetail({
         />
       </div>
 
-      {/* Message generator */}
       <div className="msg-section">
         <span className="section-label">Generador de mensaje WPP</span>
         <div className="tone-selector">
