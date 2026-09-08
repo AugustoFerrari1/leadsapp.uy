@@ -174,3 +174,13 @@ Para agregar más zonas, editá el array `zonas` en `backend/main.py`.
 1. Conectá el repo en vercel.com
 2. Root directory: `frontend`
 3. Agregá variable de entorno: `REACT_APP_API_URL=https://tu-backend.render.com`
+
+
+# Terminal 1 - Backend
+cd ~/Desktop/leadsapp.uy/backend
+source venv/bin/activate
+uvicorn main:app --reload --port 8000
+
+# Terminal 2 - Frontend
+cd ~/Desktop/leadsapp.uy/frontend
+npm start

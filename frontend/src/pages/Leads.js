@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { isMobileDevice, openWhatsAppChat } from '../utils/whatsapp';
 import './Leads.css';
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -58,6 +59,13 @@ export default function Leads() {
   const [tone, setTone] = useState('amigable');
   const [copied, setCopied] = useState(false);
   const [templateCopied, setTemplateCopied] = useState(false);
+  const [isMobile, setIsMobile] = useState(isMobileDevice());
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(isMobileDevice());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -136,13 +144,10 @@ export default function Leads() {
     updateLeadLocally(lead.id, current => ({ ...current, notes }));
   };
 
-  const openWhatsapp = (lead, msg) => {
-    if (!lead.phone) return;
-    const clean = lead.phone.replace(/\D/g, '');
-    const encoded = encodeURIComponent(msg);
-    const num = clean.startsWith('598') ? clean : `598${clean.replace(/^0/, '')}`;
+  const openWhatsapp = (lead, msg, forceRegular = false) => {
+    if (!lead || !lead.phone) return;
     markLeadContacted(lead);
-    window.open(`https://wa.me/${num}?text=${encoded}`, '_blank');
+    openWhatsAppChat({ phone: lead.phone, message: msg, forceRegular });
   };
 
   const sendTemplateMessage = async (lead) => {
@@ -182,8 +187,8 @@ export default function Leads() {
   };
 
   return (
-    <div className="leads-layout">
-      <div className="leads-panel">
+    <div className={`leads-layout ${selected ? 'has-selected' : ''}`}>
+      <div className={`leads-panel ${isMobile && selected ? 'mobile-hidden' : ''}`}>
         <div className="leads-header">
           <div>
             <h1 className="page-title">Leads</h1>
@@ -196,7 +201,7 @@ export default function Leads() {
             </div>
           </div>
           <div className="lead-actions">
-            <button className="secondary-btn" onClick={jumpToNextHotLead} disabled={!nextHotLead}>
+            <button className="secondary-btn next-lead-btn" onClick={jumpToNextHotLead} disabled={!nextHotLead}>
               Siguiente lead
             </button>
           </div>
@@ -211,12 +216,12 @@ export default function Leads() {
             className="search-input"
           />
           <div className="filter-row">
-            <select value={filterWeb} onChange={e => setFilterWeb(e.target.value)}>
+            <select value={filterWeb} onChange={e => setFilterWeb(e.target.value)} className="filter-select">
               <option value="all">Todos (web)</option>
               <option value="no">Sin web ⚡</option>
               <option value="yes">Con web</option>
             </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="filter-select">
               <option value="all">Todos (estado)</option>
               <option value="nuevo">Nuevos</option>
               <option value="contactado">Contactados</option>
@@ -226,19 +231,21 @@ export default function Leads() {
           </div>
           <div className="sort-row">
             <span className="sort-label">Ordenar:</span>
-            {[
-              { key: 'score', label: '⚡ Score' },
-              { key: 'date', label: '🕐 Fecha' },
-              { key: 'rating', label: '★ Rating' },
-            ].map(s => (
-              <button
-                key={s.key}
-                className={`sort-btn ${sortBy === s.key ? 'active' : ''}`}
-                onClick={() => setSortBy(s.key)}
-              >
-                {s.label}
-              </button>
-            ))}
+            <div className="sort-buttons-container">
+              {[
+                { key: 'score', label: '⚡ Score' },
+                { key: 'date', label: '🕐 Fecha' },
+                { key: 'rating', label: '★ Rating' },
+              ].map(s => (
+                <button
+                  key={s.key}
+                  className={`sort-btn ${sortBy === s.key ? 'active' : ''}`}
+                  onClick={() => setSortBy(s.key)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -265,7 +272,7 @@ export default function Leads() {
         </div>
       </div>
 
-      <div className="detail-panel">
+      <div className={`detail-panel ${isMobile && !selected ? 'mobile-hidden' : ''}`}>
         {selected ? (
           <LeadDetail
             lead={selected}
@@ -276,7 +283,7 @@ export default function Leads() {
             setTone={setTone}
             onGenerate={() => generateMessage(selected)}
             onSendTemplate={() => sendTemplateMessage(selected)}
-            onOpenWpp={() => openWhatsapp(selected, message)}
+            onOpenWpp={(forceRegular) => openWhatsapp(selected, message, forceRegular)}
             onCopy={copyMessage}
             copied={copied}
             onCopyFeatureTemplate={copyFeatureTemplate}
@@ -284,6 +291,10 @@ export default function Leads() {
             onStatusChange={(s) => updateStatus(selected, s)}
             onNotesChange={(notes) => updateNotes(selected, notes)}
             sendLoading={sendLoading}
+            isMobile={isMobile}
+            onBackToList={() => setSelected(null)}
+            onNextLead={jumpToNextHotLead}
+            hasNextLead={!!nextHotLead}
           />
         ) : (
           <div className="detail-empty">
@@ -330,7 +341,8 @@ function LeadDetail({
   lead, message, setMessage, genLoading, tone, setTone,
   onGenerate, onSendTemplate, onOpenWpp, onCopy, copied,
   onCopyFeatureTemplate, templateCopied, onStatusChange,
-  onNotesChange, sendLoading
+  onNotesChange, sendLoading, isMobile, onBackToList,
+  onNextLead, hasNextLead
 }) {
   const st = STATUS_LABELS[lead.status] || STATUS_LABELS.nuevo;
   const toneLabel = tone.charAt(0).toUpperCase() + tone.slice(1);
@@ -358,6 +370,17 @@ function LeadDetail({
 
   return (
     <div className="detail-content">
+      <div className="mobile-detail-nav-bar">
+        <button className="mobile-back-btn" onClick={onBackToList}>
+          <span>←</span> Volver a la lista
+        </button>
+        {hasNextLead && (
+          <button className="mobile-next-btn" onClick={onNextLead}>
+            Siguiente lead 🔥
+          </button>
+        )}
+      </div>
+
       <div className="detail-top">
         <div>
           <h2 className="detail-name">{lead.name}</h2>
@@ -373,9 +396,19 @@ function LeadDetail({
 
       <div className="detail-info">
         {lead.phone && (
-          <div className="info-row">
+          <div className="info-row phone-info-row">
             <span className="info-label">Teléfono</span>
-            <span>{lead.phone}</span>
+            <div className="phone-actions-container">
+              <a href={`tel:${lead.phone.replace(/\D/g, '')}`} className="phone-click-link" title="Llamar">
+                📞 {lead.phone}
+              </a>
+              <span className="phone-channel-badge phone-badge-mobile">
+                📲 WPP Business
+              </span>
+              <span className="phone-channel-badge phone-badge-desktop">
+                📲 WhatsApp
+              </span>
+            </div>
           </div>
         )}
         <div className="info-row">
@@ -432,7 +465,11 @@ function LeadDetail({
       </div>
 
       <div className="msg-section">
-        <span className="section-label">Generador de mensaje WPP</span>
+        <div className="msg-section-header">
+          <span className="section-label">Generador de mensaje WPP</span>
+          <span className="wpp-mobile-badge">Modo Celular: WPP Business</span>
+        </div>
+
         <div className="tone-selector">
           <span>Template:</span>
           {['amigable', 'directo', 'curioso'].map(t => (
@@ -445,13 +482,22 @@ function LeadDetail({
             </button>
           ))}
         </div>
+
         <div className="generator-actions">
           <button
             className="gen-btn"
             onClick={onSendTemplate}
             disabled={genLoading || sendLoading || !lead.phone}
           >
-            {sendLoading ? <><span className="spin">⟳</span> Preparando...</> : `✦ Enviar template ${toneLabel}`}
+            {sendLoading ? (
+              <><span className="spin">⟳</span> Preparando...</>
+            ) : (
+              <>
+                <span>✦</span>
+                <span className="gen-text-desktop">Enviar template {toneLabel}</span>
+                <span className="gen-text-mobile">Enviar por WhatsApp Business</span>
+              </>
+            )}
           </button>
           <button
             className="secondary-btn"
@@ -461,6 +507,13 @@ function LeadDetail({
             {genLoading ? <><span className="spin">⟳</span> Generando...</> : message ? 'Ver otro mensaje' : 'Generar para editar'}
           </button>
         </div>
+
+        {lead.phone && (
+          <p className="mobile-wpp-hint">
+            📲 En tu celular se abrirá directamente la app de <strong>WhatsApp Business</strong>.
+          </p>
+        )}
+
         <div className="support-template-box">
           <div className="support-template-header">
             <span className="support-template-title">Texto extra para copiar</span>
@@ -488,8 +541,23 @@ function LeadDetail({
               <button className="copy-btn" onClick={onCopy}>
                 {copied ? '✓ Copiado!' : '⧉ Copiar'}
               </button>
-              <button className="wpp-btn" onClick={onOpenWpp} disabled={!lead.phone}>
-                <span>📲</span> Abrir en WhatsApp
+              <button
+                className="wpp-btn"
+                onClick={() => onOpenWpp(false)}
+                disabled={!lead.phone}
+              >
+                <span>📲</span>
+                <span className="wpp-text-desktop">Abrir en WhatsApp</span>
+                <span className="wpp-text-mobile">Abrir en WhatsApp Business</span>
+              </button>
+            </div>
+            <div className="mobile-wpp-options">
+              <button
+                type="button"
+                className="wpp-alt-link"
+                onClick={() => onOpenWpp(true)}
+              >
+                ¿Querés usar WhatsApp común en lugar de Business? Toca acá
               </button>
             </div>
           </div>

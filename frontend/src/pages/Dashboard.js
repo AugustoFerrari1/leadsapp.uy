@@ -4,7 +4,7 @@ import './Dashboard.css';
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-export default function Dashboard() {
+export default function Dashboard({ onNavigateToLeads }) {
   const [stats, setStats] = useState(null);
   const [scraping, setScraping] = useState(false);
   const [scrapeMsg, setScrapeMsg] = useState('');

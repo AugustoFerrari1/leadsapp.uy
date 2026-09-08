@@ -21,6 +21,21 @@ BARBER_KEYWORDS = [
     "navaja", "fade", "grooming", "gentleman", "men", "hombre"
 ]
 
+# Dominios de redes sociales — no cuentan como sitio web real
+SOCIAL_DOMAINS = [
+    "instagram.com", "facebook.com", "fb.com", "tiktok.com",
+    "twitter.com", "x.com", "wa.me", "linktr.ee"
+]
+
+
+def clean_text_field(text: str) -> str:
+    """Elimina íconos Unicode de Material Symbols / Google Fonts que aparecen al inicio."""
+    if not text:
+        return text
+    # Eliminar caracteres del Private Use Area de Unicode (íconos de Google Maps)
+    cleaned = re.sub(r'[\uE000-\uF8FF\uFE0F\uFEFF]+', '', text)
+    return cleaned.strip()
+
 # Textos posibles del botón de "aceptar" en distintos idiomas/variantes
 CONSENT_BUTTON_TEXTS = [
     "Aceptar todo", "Acepto", "Aceptar", "I agree", "Accept all",
@@ -194,13 +209,13 @@ async def extract_lead_from_listing(listing, page) -> Dict[str, Any]:
         # Address
         addr_el = await page.query_selector('[data-item-id="address"]')
         if addr_el:
-            lead["address"] = (await addr_el.inner_text()).strip()
+            lead["address"] = clean_text_field(await addr_el.inner_text())
         else:
             addr_items = await page.query_selector_all('button[data-tooltip="Copiar dirección"]')
             if not addr_items:
                 addr_items = await page.query_selector_all('[data-tooltip="Copiar dirección"]')
             if addr_items:
-                lead["address"] = (await addr_items[0].inner_text()).strip()
+                lead["address"] = clean_text_field(await addr_items[0].inner_text())
 
         # Phone
         phone_el = (
@@ -223,24 +238,37 @@ async def extract_lead_from_listing(listing, page) -> Dict[str, Any]:
         # Website
         web_el = await page.query_selector('[data-item-id*="authority"]')
         if web_el:
-            lead["website"] = (await web_el.inner_text()).strip()
-            lead["has_website"] = True
+            raw_website = clean_text_field(await web_el.inner_text())
+            # Verificar si es una red social (no cuenta como web real)
+            is_social = any(domain in raw_website.lower() for domain in SOCIAL_DOMAINS)
+            lead["website"] = raw_website if not is_social else None
+            lead["has_website"] = not is_social
         else:
             lead["has_website"] = False
             lead["website"] = None
 
-        # Rating
+        # Rating — intentar múltiples selectores y también aria-label
         rating_el = (
-            await page.query_selector('[aria-label*="estrella"]')
-            or await page.query_selector('.MW4etd')
+            await page.query_selector('.MW4etd')
             or await page.query_selector('span.ceNzKf')
+            or await page.query_selector('[aria-label*="estrella"]')
+            or await page.query_selector('[aria-label*="stars"]')
         )
         if rating_el:
-            rating_text = await rating_el.inner_text()
-            try:
-                lead["rating"] = float(rating_text.replace(",", "."))
-            except Exception:
-                lead["rating"] = None
+            # Primero intentar leer el aria-label que tiene el número directamente
+            aria = await rating_el.get_attribute('aria-label') or ""
+            rating_match = re.search(r'([\d][.,][\d])', aria)
+            if rating_match:
+                try:
+                    lead["rating"] = float(rating_match.group(1).replace(",", "."))
+                except Exception:
+                    lead["rating"] = None
+            else:
+                rating_text = (await rating_el.inner_text()).strip()
+                try:
+                    lead["rating"] = float(rating_text.replace(",", "."))
+                except Exception:
+                    lead["rating"] = None
         else:
             lead["rating"] = None
 

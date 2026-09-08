@@ -30,6 +30,8 @@ html, body {
   font-size: 14px;
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::-webkit-scrollbar { width: 4px; }
