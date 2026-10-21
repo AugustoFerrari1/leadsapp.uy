@@ -51,7 +51,7 @@ export async function scrapeBarberShops(
     language: 'es',
     skipClosedPlaces: false,
     extractEmails: true,
-    countryCode: 'UY',
+    countryCode: 'uy',
   }
 
   const run = await client.actor('compass/crawler-google-places').call(runInput)
