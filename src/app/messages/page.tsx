@@ -16,6 +16,7 @@ import {
   X,
   Save,
   Check,
+  Globe,
 } from 'lucide-react'
 
 type Lead = {
@@ -24,6 +25,7 @@ type Lead = {
   phone?: string
   email?: string
   city?: string
+  website?: string | null
   status: string
   preferredChannel?: string
 }
@@ -141,6 +143,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [results, setResults] = useState<{ name: string; channel: string; success: boolean; error?: string }[]>([])
   const [filterChannel, setFilterChannel] = useState<'all' | 'whatsapp' | 'email'>('all')
+  const [filterWebsite, setFilterWebsite] = useState<'all' | 'without_web' | 'with_web'>('all')
 
   // Templates management state
   const [templates, setTemplates] = useState<Template[]>(DEFAULT_TEMPLATES)
@@ -183,10 +186,22 @@ export default function MessagesPage() {
   }, [fetchLeads, fetchTemplates])
 
   const filtered = leads.filter((l) => {
-    if (filterChannel === 'whatsapp') return !!l.phone
-    if (filterChannel === 'email') return !l.phone && !!l.email
-    return l.phone || l.email
+    const channelMatch =
+      filterChannel === 'whatsapp'
+        ? !!l.phone
+        : filterChannel === 'email'
+        ? !l.phone && !!l.email
+        : l.phone || l.email
+    if (!channelMatch) return false
+
+    const hasWeb = !!l.website && l.website.trim() !== ''
+    if (filterWebsite === 'without_web') return !hasWeb
+    if (filterWebsite === 'with_web') return hasWeb
+    return true
   })
+
+  const withoutWebCount = leads.filter((l) => !l.website || l.website.trim() === '').length
+  const withWebCount = leads.filter((l) => !!l.website && l.website.trim() !== '').length
 
   const toggleLead = (id: string) =>
     setSelectedLeads((prev) => {
@@ -338,35 +353,93 @@ export default function MessagesPage() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Lead selector */}
         <div className="xl:col-span-2 glass p-5 space-y-4 animate-in h-fit">
-          <div className="flex items-center justify-between">
-            <h2 className="text-white font-semibold text-sm">Leads nuevos</h2>
-            <div className="flex gap-2">
-              {(['all', 'whatsapp', 'email'] as const).map((ch) => (
-                <button
-                  key={ch}
-                  onClick={() => setFilterChannel(ch)}
-                  className="text-xs px-2 py-1 rounded-lg transition-all"
-                  style={{
-                    background: filterChannel === ch ? 'rgba(124,58,237,0.2)' : 'transparent',
-                    color: filterChannel === ch ? '#a78bfa' : '#6b7280',
-                    border: filterChannel === ch ? '1px solid rgba(124,58,237,0.3)' : '1px solid transparent',
-                  }}
-                >
-                  {ch === 'all' ? 'Todos' : ch === 'whatsapp' ? '📱' : '📧'}
-                </button>
-              ))}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-white font-semibold text-sm">Leads nuevos</h2>
+              <div className="flex gap-1.5">
+                {(['all', 'whatsapp', 'email'] as const).map((ch) => (
+                  <button
+                    key={ch}
+                    onClick={() => setFilterChannel(ch)}
+                    className="text-xs px-2 py-1 rounded-lg transition-all"
+                    style={{
+                      background: filterChannel === ch ? 'rgba(124,58,237,0.2)' : 'transparent',
+                      color: filterChannel === ch ? '#a78bfa' : '#6b7280',
+                      border: filterChannel === ch ? '1px solid rgba(124,58,237,0.3)' : '1px solid transparent',
+                    }}
+                  >
+                    {ch === 'all' ? 'Todos' : ch === 'whatsapp' ? '📱' : '📧'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Filtro por página web */}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px]" style={{ color: '#9ca3af' }}>Página web:</span>
+              <div className="flex gap-1">
+                {(
+                  [
+                    { id: 'all', label: 'Todas' },
+                    { id: 'without_web', label: `🚫 Sin web (${withoutWebCount})` },
+                    { id: 'with_web', label: `🌐 Con web (${withWebCount})` },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setFilterWebsite(f.id)}
+                    className="text-[11px] px-2 py-0.5 rounded-lg transition-all"
+                    style={{
+                      background: filterWebsite === f.id ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.03)',
+                      color: filterWebsite === f.id ? '#c4b5fd' : '#9ca3af',
+                      border: filterWebsite === f.id ? '1px solid rgba(124,58,237,0.4)' : '1px solid rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <button
-            onClick={toggleAll}
-            className="text-xs px-3 py-1.5 rounded-lg w-full text-left"
-            style={{ background: 'rgba(124,58,237,0.1)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.2)' }}
-          >
-            {selectedLeads.size === filtered.length && filtered.length > 0
-              ? 'Deseleccionar todos'
-              : `Seleccionar todos (${filtered.length})`}
-          </button>
+          {/* Botones de selección rápida */}
+          <div className="flex gap-1.5">
+            <button
+              onClick={toggleAll}
+              className="text-xs px-2 py-1.5 rounded-lg flex-1 text-center transition-all truncate"
+              style={{ background: 'rgba(124,58,237,0.1)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.2)' }}
+            >
+              {selectedLeads.size === filtered.length && filtered.length > 0
+                ? 'Deseleccionar'
+                : `Todos (${filtered.length})`}
+            </button>
+            <button
+              onClick={() => {
+                const withoutWebIds = filtered
+                  .filter((l) => !l.website || l.website.trim() === '')
+                  .map((l) => l.id)
+                setSelectedLeads(new Set(withoutWebIds))
+              }}
+              className="text-xs px-2 py-1.5 rounded-lg text-center transition-all flex items-center gap-1"
+              style={{ background: 'rgba(245,158,11,0.12)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.25)' }}
+              title="Seleccionar únicamente los leads que no tienen sitio web"
+            >
+              🚫 Solo sin web
+            </button>
+            <button
+              onClick={() => {
+                const withWebIds = filtered
+                  .filter((l) => !!l.website && l.website.trim() !== '')
+                  .map((l) => l.id)
+                setSelectedLeads(new Set(withWebIds))
+              }}
+              className="text-xs px-2 py-1.5 rounded-lg text-center transition-all flex items-center gap-1"
+              style={{ background: 'rgba(59,130,246,0.12)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.25)' }}
+              title="Seleccionar únicamente los leads que tienen sitio web"
+            >
+              🌐 Solo con web
+            </button>
+          </div>
 
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {loading ? (
@@ -375,7 +448,7 @@ export default function MessagesPage() {
               </div>
             ) : filtered.length === 0 ? (
               <p className="text-center py-8 text-sm" style={{ color: '#6b7280' }}>
-                Sin leads nuevos
+                Sin leads que coincidan con los filtros
               </p>
             ) : (
               filtered.map((lead) => (
@@ -384,17 +457,43 @@ export default function MessagesPage() {
                   onClick={() => toggleLead(lead.id)}
                   className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
                   style={{
-                    background: selectedLeads.has(lead.id) ? 'rgba(124,58,237,0.12)' : 'rgba(28,28,40,0.5)',
-                    border: selectedLeads.has(lead.id) ? '1px solid rgba(124,58,237,0.35)' : '1px solid rgba(255,255,255,0.05)',
+                    background: selectedLeads.has(lead.id) ? 'rgba(124,58,237,0.15)' : 'rgba(28,28,40,0.5)',
+                    border: selectedLeads.has(lead.id) ? '1px solid rgba(124,58,237,0.45)' : '1px solid rgba(255,255,255,0.05)',
                   }}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-white truncate">{lead.name}</span>
-                    {lead.phone ? (
-                      <Phone size={11} style={{ color: '#25d366', flexShrink: 0 }} />
-                    ) : (
-                      <Mail size={11} style={{ color: '#60a5fa', flexShrink: 0 }} />
-                    )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-white truncate flex-1">{lead.name}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {lead.website && lead.website.trim() !== '' ? (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 font-medium"
+                          style={{
+                            background: 'rgba(59,130,246,0.15)',
+                            color: '#93c5fd',
+                            border: '1px solid rgba(59,130,246,0.3)',
+                          }}
+                          title={`Web: ${lead.website}`}
+                        >
+                          <Globe size={10} /> Con web
+                        </span>
+                      ) : (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                          style={{
+                            background: 'rgba(245,158,11,0.12)',
+                            color: '#fbbf24',
+                            border: '1px solid rgba(245,158,11,0.25)',
+                          }}
+                        >
+                          Sin web
+                        </span>
+                      )}
+                      {lead.phone ? (
+                        <Phone size={11} style={{ color: '#25d366' }} />
+                      ) : (
+                        <Mail size={11} style={{ color: '#60a5fa' }} />
+                      )}
+                    </div>
                   </div>
                   {lead.city && (
                     <span className="text-xs" style={{ color: '#6b7280' }}>{lead.city}</span>
