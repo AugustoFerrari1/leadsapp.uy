@@ -72,13 +72,67 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [wppState, setWppState] = useState<'open' | 'connecting' | 'disconnected' | 'loading'>('loading')
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [loadingQr, setLoadingQr] = useState(false)
+
+  const checkWppStatus = async () => {
+    try {
+      const res = await fetch('/api/whatsapp/status')
+      const data = await res.json()
+      if (data.state === 'open') {
+        setWppState('open')
+        setQrCode(null)
+      } else if (data.state === 'connecting') {
+        setWppState('connecting')
+      } else {
+        setWppState('disconnected')
+      }
+    } catch {
+      setWppState('disconnected')
+    }
+  }
+
+  const loadQrCode = async () => {
+    setLoadingQr(true)
+    try {
+      const res = await fetch('/api/whatsapp/connect')
+      const data = await res.json()
+      if (data.base64) {
+        setQrCode(data.base64)
+      } else if (data.instance?.state === 'open') {
+        setWppState('open')
+        setQrCode(null)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingQr(false)
+    }
+  }
 
   useEffect(() => {
     fetch('/api/settings').then((r) => r.json()).then((data) => {
       setForm(data)
       setLoading(false)
     })
+    checkWppStatus()
   }, [])
+
+  // Poll status while QR code is open
+  useEffect(() => {
+    if (!qrCode && wppState !== 'connecting') return
+    const interval = setInterval(async () => {
+      const res = await fetch('/api/whatsapp/status')
+      const data = await res.json()
+      if (data.state === 'open') {
+        setWppState('open')
+        setQrCode(null)
+        clearInterval(interval)
+      }
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [qrCode, wppState])
 
   const set = (key: keyof SettingsData) => (value: string | number) =>
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -168,16 +222,71 @@ export default function SettingsPage() {
               className="input"
             />
           </div>
-          <div
-            className="rounded-xl p-3 text-xs"
-            style={{ background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.15)' }}
-          >
-            <p className="text-green-400 font-semibold mb-1">¿Cómo configurar Evolution API?</p>
-            <ol className="space-y-1" style={{ color: '#9ca3af' }}>
-              <li>1. Instalá Evolution API en un VPS o Railway</li>
-              <li>2. Escaneá el QR con tu celular de WPP Business</li>
-              <li>3. Pegá la URL, API Key e instancia acá</li>
-            </ol>
+          {/* Estado de conexión y botón QR */}
+          <div className="pt-2 border-t border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">Estado de WhatsApp:</span>
+              {wppState === 'open' ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                  Conectado
+                </span>
+              ) : wppState === 'connecting' ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                  Esperando escaneo...
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                  Desconectado
+                </span>
+              )}
+            </div>
+
+            {wppState !== 'open' && (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={loadQrCode}
+                  disabled={loadingQr}
+                  className="w-full py-2.5 px-4 rounded-xl text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/30"
+                >
+                  {loadingQr ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Generando código QR...
+                    </>
+                  ) : (
+                    <>
+                      <span>📲</span>
+                      {qrCode ? 'Actualizar Código QR' : 'Vincular WhatsApp (Ver Código QR)'}
+                    </>
+                  )}
+                </button>
+
+                {qrCode && (
+                  <div className="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-4 flex flex-col items-center text-center animate-in">
+                    <p className="text-xs text-emerald-400 font-medium mb-1">
+                      Escanea este código con tu celular
+                    </p>
+                    <p className="text-[11px] text-gray-400 mb-3">
+                      WhatsApp &rarr; Dispositivos vinculados &rarr; Vincular dispositivo
+                    </p>
+                    <div className="bg-white p-3 rounded-xl shadow-xl">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={qrCode}
+                        alt="Código QR WhatsApp"
+                        className="w-60 h-60 object-contain"
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2">
+                      Se actualizará automáticamente apenas lo escanees.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </SectionCard>
