@@ -1,0 +1,43 @@
+[
+  {
+    "id": "directo",
+    "label": "Directo al punto",
+    "text": "Hola! Vi tu barbería en Google Maps y quería contarte algo corto.\n\nTenemos una plataforma llamada *Turno.uy* — permite que tus clientes reserven turno desde el celular las 24hs, sin que vos tengas que atender el teléfono.\n\nRecordatorios automáticos por WhatsApp, tu propia página de reservas, agenda digital para todos tus barberos.\n\nTodo eso por *$400/mes*. Sin contratos, cancelás cuando querés.\n\n¿Te mando más info o hacemos una demo rápida?"
+  },
+  {
+    "id": "dolor-telefono",
+    "label": "Dolor: teléfono",
+    "text": "Hola! Soy de Turno.uy.\n\n¿Cuántas reservas perdés porque el cliente no pudo comunicarse cuando quería?\n\nCon Turno.uy tus clientes reservan solos desde el celular, a cualquier hora. Y si no vienen, les llega un recordatorio automático por WhatsApp.\n\n¿Tiene sentido para tu barbería? Respondé \"sí\" y te cuento más."
+  },
+  {
+    "id": "social-proof",
+    "label": "Social proof",
+    "text": "Hola! Soy de Turno.uy.\n\nBarberías uruguayas que sumaron turnos online redujeron ausencias un 60% y recuperaron horas de trabajo que perdían al teléfono.\n\nTodo por $400/mes, sin contratos.\n\n¿Querés ver cómo funciona? Te muestro en 10 minutos, sin compromiso."
+  },
+  {
+    "id": "competencia",
+    "label": "Competencia + urgencia",
+    "text": "Hola! Soy de Turno.uy.\n\nLas barberías con sistema de turnos online reciben hasta un 40% más reservas que las que no.\n\nTus clientes reservan solos a las 2 de la mañana. Vos seguís durmiendo.\n\n$400/mes, cancelás cuando querés. ¿Lo vemos juntos esta semana?"
+  },
+  {
+    "id": "amigable",
+    "label": "Tono amigable / vecino",
+    "text": "Hola! Vi tu barbería por la zona y se ve que tienen buen trabajo.\n\nTe quería comentar que tenemos una plataforma uruguaya — *Turno.uy* — que ayuda a barberías a que sus clientes puedan reservar turno desde el celular sin llamar.\n\nEs simple, económico ($400/mes) y los clientes la aman porque reservan cuando quieren, no cuando vos podés atender el teléfono.\n\n¿Tenés 10 minutos para que te muestre cómo funciona? Sin compromiso."
+  },
+  {
+    "id": "seguimiento-dia-3",
+    "label": "Seguimiento: día 3",
+    "text": "Hola de vuelta! Te escribí el otro día de Turno.uy.\n\nPor si se perdió: es un sistema de turnos online para barberías, $400/mes, sin contratos.\n\nSi todavía no es el momento, no hay problema. Si sí te interesa, respondé y armamos una demo rápida."
+  },
+  {
+    "id": "seguimiento-demo",
+    "label": "Seguimiento: oferta demo",
+    "text": "Hola, de nuevo Turno.uy.\n\nÚltima vez que te escribo sobre esto: si te interesa ver cómo funciona el sistema de turnos, te ofrezco una demo de 10 minutos esta semana.\n\nSin compromiso, sin venta agresiva. Solo te muestro y decidís vos."
+  },
+  {
+    "id": "email-propuesta",
+    "label": "Email: propuesta directa",
+    "subject": "Propuesta para tu barbería",
+    "text": "Hola,\n\nVi tu barbería y creo que Turno.uy puede ayudarte.\n\nTurno.uy es una plataforma uruguaya que permite que tus clientes reserven turno online desde el celular, a cualquier hora. Ellos reciben recordatorio automático por WhatsApp, lo que reduce ausencias. Vos tenés la agenda de todos tus barberos en un solo lugar, más control de caja y finanzas.\n\nPrecio: $400/mes. Sin contratos.\n\n¿Te cuadra una demo de 10 minutos esta semana?\n\nSaludos,\n[Tu nombre]\nTurno.uy"
+  }
+]
