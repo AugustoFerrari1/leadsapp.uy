@@ -20,6 +20,7 @@ type ScrapeResult = {
 export default function ScraperPage() {
   const [selectedCities, setSelectedCities] = useState<string[]>(['Montevideo'])
   const [maxPerCity, setMaxPerCity] = useState(30)
+  const [onlyWithoutWebsite, setOnlyWithoutWebsite] = useState(true)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ScrapeResult | null>(null)
 
@@ -40,7 +41,7 @@ export default function ScraperPage() {
       const res = await fetch('/api/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cities: selectedCities, maxPerCity }),
+        body: JSON.stringify({ cities: selectedCities, maxPerCity, onlyWithoutWebsite }),
       })
       const data = await res.json()
       setResult(data)
@@ -128,6 +129,29 @@ export default function ScraperPage() {
               <p className="text-xs mt-1" style={{ color: '#6b7280' }}>
                 Más resultados = más créditos Apify
               </p>
+            </div>
+
+            <div>
+              <label
+                className="flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all"
+                style={{
+                  background: onlyWithoutWebsite ? 'rgba(124,58,237,0.1)' : 'rgba(28,28,40,0.5)',
+                  border: onlyWithoutWebsite ? '1px solid rgba(124,58,237,0.3)' : '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={onlyWithoutWebsite}
+                  onChange={(e) => setOnlyWithoutWebsite(e.target.checked)}
+                  className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 bg-gray-800 border-gray-600"
+                />
+                <div>
+                  <p className="text-xs font-semibold text-white">Solo barberías sin página web</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: '#9ca3af' }}>
+                    Filtra directo en Apify para no gastar créditos en negocios que ya tienen web.
+                  </p>
+                </div>
+              </label>
             </div>
 
             <div

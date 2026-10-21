@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { cities, maxPerCity = 30 } = body
+    const { cities, maxPerCity = 30, onlyWithoutWebsite = true } = body
 
     // Get token from settings or env
     const settings = await prisma.settings.findFirst()
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Apify token not configured' }, { status: 400 })
     }
 
-    const results = await scrapeBarberShops(token, cities, maxPerCity)
+    const results = await scrapeBarberShops(token, cities, maxPerCity, onlyWithoutWebsite)
 
     // Upsert leads (avoid duplicates by name+address)
     let created = 0

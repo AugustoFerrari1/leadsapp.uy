@@ -37,7 +37,8 @@ export { URUGUAY_CITIES }
 export async function scrapeBarberShops(
   token: string,
   cities: string[],
-  maxPerCity: number = 50
+  maxPerCity: number = 50,
+  onlyWithoutWebsite: boolean = true
 ): Promise<BarberLead[]> {
   const client = new ApifyClient({ token })
 
@@ -50,14 +51,20 @@ export async function scrapeBarberShops(
     maxCrawledPlacesPerSearch: maxPerCity,
     language: 'es',
     skipClosedPlaces: false,
-    extractEmails: true,
+    extractEmails: !onlyWithoutWebsite,
     countryCode: 'uy',
+    website: onlyWithoutWebsite ? 'withoutWebsite' : 'allPlaces',
   }
 
   const run = await client.actor('compass/crawler-google-places').call(runInput)
   const { items } = await client.dataset(run.defaultDatasetId).listItems()
 
-  return items.map((item: Record<string, unknown>) => ({
+  const mappedLeads: BarberLead[] = items
+    .filter((item: Record<string, unknown>) => {
+      if (onlyWithoutWebsite && item.website) return false
+      return true
+    })
+    .map((item: Record<string, unknown>) => ({
     title: (item.title as string) || '',
     phone: (item.phone as string) || undefined,
     email: (item.email as string) || undefined,
@@ -70,6 +77,8 @@ export async function scrapeBarberShops(
     url: (item.url as string) || undefined,
     location: item.location as { lat: number; lng: number } | undefined,
   }))
+
+  return mappedLeads
 }
 
 function extractCity(address: string): string {
