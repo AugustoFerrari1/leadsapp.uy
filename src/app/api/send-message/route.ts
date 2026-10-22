@@ -90,12 +90,13 @@ export async function POST(request: NextRequest) {
           },
         })
 
-        // Update lead status and last contact
+        // Update lead status and last contact timestamp
         if (success) {
+          const newStatus = lead.status === 'new' ? 'contacted' : lead.status
           await prisma.lead.update({
             where: { id: lead.id },
             data: {
-              status: 'contacted',
+              status: newStatus,
               lastContactAt: new Date(),
             },
           })
@@ -109,9 +110,15 @@ export async function POST(request: NextRequest) {
         success,
         error: error || undefined,
       })
+
+      // Gentle pause between messages to avoid WhatsApp rate limit
+      if (leads.length > 1) {
+        await new Promise((r) => setTimeout(r, 600))
+      }
     }
 
     return NextResponse.json({ results })
+
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Send failed' },

@@ -5,19 +5,49 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
   const city = searchParams.get('city')
+  const search = searchParams.get('search')
+  const allMessages = searchParams.get('messages') === 'all'
 
   const where: Record<string, unknown> = {}
-  if (status && status !== 'all') where.status = status
-  if (city && city !== 'all') where.city = { contains: city }
+
+  if (status && status !== 'all') {
+    if (status.includes(',')) {
+      where.status = { in: status.split(',').map((s) => s.trim()) }
+    } else {
+      where.status = status
+    }
+  }
+
+  if (city && city !== 'all') {
+    where.city = { contains: city, mode: 'insensitive' }
+  }
+
+  if (search && search.trim() !== '') {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { phone: { contains: search } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { address: { contains: search, mode: 'insensitive' } },
+    ]
+  }
 
   const leads = await prisma.lead.findMany({
     where,
-    include: { messages: { orderBy: { sentAt: 'desc' }, take: 1 } },
-    orderBy: { createdAt: 'desc' },
+    include: {
+      messages: {
+        orderBy: { sentAt: 'desc' },
+        ...(allMessages ? {} : { take: 5 }),
+      },
+    },
+    orderBy: [
+      { lastContactAt: 'desc' },
+      { createdAt: 'desc' },
+    ],
   })
 
   return NextResponse.json(leads)
 }
+
 
 export async function POST(request: NextRequest) {
   const body = await request.json()

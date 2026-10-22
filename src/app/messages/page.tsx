@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import {
   MessageSquare,
   Send,
@@ -17,6 +18,7 @@ import {
   Save,
   Check,
   Globe,
+  RotateCcw,
 } from 'lucide-react'
 
 type Lead = {
@@ -343,11 +345,35 @@ export default function MessagesPage() {
 
   return (
     <div className="p-8 space-y-6">
-      <div className="animate-in">
-        <h1 className="text-3xl font-bold text-white mb-1">
-          Centro de <span className="gradient-text">Mensajes</span>
-        </h1>
-        <p style={{ color: '#6b7280' }}>Enviá WhatsApp o email a tus leads en un solo click</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-1">
+            Centro de <span className="gradient-text">Mensajes</span>
+          </h1>
+          <p style={{ color: '#6b7280' }}>Enviá WhatsApp o email a tus leads en un solo click</p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10">
+          <span
+            className="text-xs px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5"
+            style={{
+              background: 'rgba(124,58,237,0.3)',
+              color: '#ffffff',
+              border: '1px solid rgba(167,139,250,0.5)',
+            }}
+          >
+            <MessageSquare size={13} />
+            📥 Nuevos Leads (Primer contacto)
+          </span>
+          <Link
+            href="/followup"
+            className="text-xs px-3 py-1.5 rounded-lg font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5"
+          >
+            <RotateCcw size={13} className="text-amber-400" />
+            🔄 Seguimiento (Contactados)
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
@@ -735,7 +761,9 @@ export default function MessagesPage() {
                       {r.channel === 'whatsapp' ? '📱 WPP' : '📧 Email'}
                     </span>
                     {!r.success && r.error && (
-                      <span className="text-xs text-red-400 truncate max-w-24">{r.error}</span>
+                      <span className="text-xs text-red-400 truncate max-w-xs cursor-help" title={r.error}>
+                        {r.error}
+                      </span>
                     )}
                   </div>
                 ))}

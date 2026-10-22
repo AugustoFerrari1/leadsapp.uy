@@ -9,14 +9,17 @@ import {
   Settings,
   Scissors,
   TrendingUp,
+  RotateCcw,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/scraper', label: 'Scraper', icon: Search },
   { href: '/messages', label: 'Mensajes', icon: MessageSquare },
+  { href: '/followup', label: 'Seguimiento', icon: RotateCcw },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ]
+
 
 export default function Sidebar() {
   const pathname = usePathname()
