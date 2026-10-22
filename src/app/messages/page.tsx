@@ -30,6 +30,8 @@ type Lead = {
   website?: string | null
   status: string
   preferredChannel?: string
+  lastContactAt?: string | null
+  messages?: { status: string }[]
 }
 
 type Template = {
@@ -157,13 +159,20 @@ export default function MessagesPage() {
   const [formText, setFormText] = useState('')
   const [savedFeedback, setSavedFeedback] = useState(false)
 
-  // Fetch leads
+  // Fetch leads (solo no contactados)
   const fetchLeads = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/leads?status=new')
-    const data = await res.json()
-    setLeads(data)
-    setLoading(false)
+    try {
+      const res = await fetch(`/api/leads?status=new&_t=${Date.now()}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json()
+      setLeads(Array.isArray(data) ? data : [])
+    } catch (e) {
+      console.error('Error fetching uncontacted leads:', e)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   // Fetch templates from API
@@ -188,6 +197,10 @@ export default function MessagesPage() {
   }, [fetchLeads, fetchTemplates])
 
   const filtered = leads.filter((l) => {
+    // ESTRICTO: Solo leads que nunca han sido contactados exitosamente
+    if (l.status !== 'new' || l.lastContactAt) return false
+    if (l.messages && l.messages.some((m) => m.status === 'sent')) return false
+
     const channelMatch =
       filterChannel === 'whatsapp'
         ? !!l.phone
@@ -202,8 +215,8 @@ export default function MessagesPage() {
     return true
   })
 
-  const withoutWebCount = leads.filter((l) => !l.website || l.website.trim() === '').length
-  const withWebCount = leads.filter((l) => !!l.website && l.website.trim() !== '').length
+  const withoutWebCount = filtered.filter((l) => !l.website || l.website.trim() === '').length
+  const withWebCount = filtered.filter((l) => !!l.website && l.website.trim() !== '').length
 
   const toggleLead = (id: string) =>
     setSelectedLeads((prev) => {
@@ -336,7 +349,7 @@ export default function MessagesPage() {
     setResults(data.results || [])
     setSelectedLeads(new Set())
     setSending(false)
-    fetchLeads()
+    await fetchLeads()
   }
 
   const activeTemplate = templates.find((t) => t.id === activeTemplateId)
@@ -381,7 +394,12 @@ export default function MessagesPage() {
         <div className="xl:col-span-2 glass p-5 space-y-4 animate-in h-fit">
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-white font-semibold text-sm">Leads nuevos</h2>
+              <div>
+                <h2 className="text-white font-semibold text-sm">Leads no contactados</h2>
+                <span className="text-[11px] text-gray-500 block">
+                  {filtered.length} pendientes de 1er contacto
+                </span>
+              </div>
               <div className="flex gap-1.5">
                 {(['all', 'whatsapp', 'email'] as const).map((ch) => (
                   <button

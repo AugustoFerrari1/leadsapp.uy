@@ -11,12 +11,22 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = {}
 
   if (status && status !== 'all') {
-    if (status.includes(',')) {
+    if (status === 'new') {
+      // Solo leads que NO fueron contactados exitosamente
+      where.status = 'new'
+      where.lastContactAt = null
+      where.messages = {
+        none: {
+          status: 'sent',
+        },
+      }
+    } else if (status.includes(',')) {
       where.status = { in: status.split(',').map((s) => s.trim()) }
     } else {
       where.status = status
     }
   }
+
 
   if (city && city !== 'all') {
     where.city = { contains: city, mode: 'insensitive' }
