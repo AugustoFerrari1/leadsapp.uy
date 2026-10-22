@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import ServerStatusWidget from '@/components/ServerStatusWidget'
 import {
   MessageSquare,
   Send,
@@ -388,6 +389,9 @@ export default function MessagesPage() {
           </Link>
         </div>
       </div>
+
+      {/* WhatsApp / Render Server Status Banner */}
+      <ServerStatusWidget variant="banner" />
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Lead selector */}

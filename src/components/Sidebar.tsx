@@ -21,6 +21,8 @@ const navItems = [
 ]
 
 
+import ServerStatusWidget from '@/components/ServerStatusWidget'
+
 export default function Sidebar() {
   const pathname = usePathname()
 
@@ -79,17 +81,22 @@ export default function Sidebar() {
         })}
       </nav>
 
+      {/* Server Status Widget */}
+      <div className="px-4 py-3 border-t border-white/5">
+        <ServerStatusWidget variant="sidebar" />
+      </div>
+
       {/* Bottom stats teaser */}
-      <div className="px-4 py-4 border-t border-white/5">
+      <div className="px-4 py-2 pb-4">
         <div
-          className="rounded-xl p-3 text-xs"
-          style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)' }}
+          className="rounded-xl p-2.5 text-xs"
+          style={{ background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.15)' }}
         >
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp size={13} style={{ color: '#a78bfa' }} />
-            <span style={{ color: '#a78bfa', fontWeight: 600 }}>BarberLeads UY</span>
+          <div className="flex items-center gap-2 mb-0.5">
+            <TrendingUp size={12} style={{ color: '#a78bfa' }} />
+            <span style={{ color: '#a78bfa', fontWeight: 600, fontSize: '11px' }}>BarberLeads UY</span>
           </div>
-          <p style={{ color: '#6b7280', lineHeight: '1.4' }}>
+          <p style={{ color: '#6b7280', fontSize: '10px', lineHeight: '1.3' }}>
             Scraping + Outreach automatizado
           </p>
         </div>

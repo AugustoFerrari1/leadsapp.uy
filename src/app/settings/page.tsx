@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Settings, Key, Save, CheckCircle2, Loader2, Eye, EyeOff, ExternalLink } from 'lucide-react'
+import ServerStatusWidget from '@/components/ServerStatusWidget'
 
 type SettingsData = {
   apifyToken: string
@@ -193,7 +194,10 @@ export default function SettingsPage() {
         href="https://evolution-api.com"
         linkLabel="Documentación"
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Live server wake-up & status widget */}
+          <ServerStatusWidget variant="banner" />
+
           <div>
             <label className="block text-xs mb-1.5" style={{ color: '#9ca3af' }}>URL de tu instancia</label>
             <input

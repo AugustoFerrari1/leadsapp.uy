@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import ServerStatusWidget from '@/components/ServerStatusWidget'
 import {
   RotateCcw,
   Send,
@@ -342,6 +343,9 @@ export default function FollowUpPage() {
           </button>
         </div>
       </div>
+
+      {/* WhatsApp / Render Server Status Banner */}
+      <ServerStatusWidget variant="banner" />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in">

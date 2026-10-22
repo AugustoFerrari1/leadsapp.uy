@@ -55,7 +55,7 @@ export async function sendWhatsApp(
       if (rawText.includes('<!DOCTYPE') || rawText.includes('<html') || response.status === 502 || response.status === 503) {
         return {
           success: false,
-          error: `El servidor de WhatsApp (Render) estaba suspendido o iniciando (HTTP ${response.status}). Esperá unos segundos y reintentá.`,
+          error: `El servidor de WhatsApp (Render) está suspendido. Usá el botón "Activar Servidor" en el menú para despertarlo.`,
         }
       }
 
